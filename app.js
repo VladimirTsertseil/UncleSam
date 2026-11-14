@@ -1,7 +1,7 @@
 (() => {
   'use strict';
   const { units, number, calculate } = AnesthesiaMath;
-  const { fresh, blank, plan } = AnesthesiaCatalog;
+  const { fresh, upgrade, blank, plan } = AnesthesiaCatalog;
   const storageKey = 'anesthesia-calculator-v1';
   const main = document.querySelector('#main');
   const dialog = document.querySelector('#dialog');
@@ -51,7 +51,7 @@
     const decimal = value => string(value) && (!value.trim() || number(value) !== null);
     const mass = value => ['мг','мкг'].includes(value);
     const list = (items, test) => Array.isArray(items) && items.every(test);
-    if (data?.version !== 1 || !list(data.drugs, drug => named(drug) &&
+    if (![1, 2].includes(data?.version) || !list(data.drugs, drug => named(drug) &&
       list(drug.concentrations, c => c && number(c.value) && string(c.value) && mass(c.unit)) &&
       list(drug.doses, d => named(d) && decimal(d.value) && isUnit(d.unit) &&
         string(d.note) && string(d.source) && (!d.source || url(d.source))) && unique(drug.doses)) ||
@@ -73,7 +73,7 @@
   let startupMessage = '';
   try {
     const saved = localStorage.getItem(storageKey);
-    if (saved) database = validate(JSON.parse(saved));
+    if (saved) database = upgrade(validate(JSON.parse(saved)));
   } catch {
     startupMessage = 'Не удалось загрузить настройки браузера. Открыты стартовые шаблоны.';
   }
@@ -82,6 +82,8 @@
   let patientWeight = '';
   let tab = 'calc';
   let dirty = false;
+  let activeCard = 0;
+  let touchStart;
   let editingDrug;
   let pendingImport;
   let timer;
@@ -135,43 +137,56 @@
       updateResults();
     }
   }
+  const cards = () => Object.keys(stages).flatMap(stage =>
+    draft[stage].map((row, index) => ({ row, stage, index }))
+  );
+  function moveCard(index) {
+    if (index < 0 || index >= cards().length || index === activeCard) return;
+    activeCard = index;
+    render();
+  }
   function renderCalc() {
     const scenarioOptions = option('', 'Новый сценарий', draft.id) + database.scenarios
       .map(scenario => option(scenario.id, scenario.name, draft.id)).join('');
-    return `<section class="panel" aria-labelledby="patient-title">
-      <div class="bar"><h2 id="patient-title">Пациент и сценарий</h2>
-      ${button('Новый пациент','new-patient')}</div>
+    const deck = cards();
+    const card = deck[activeCard];
+    return `<section class="panel patient-panel" aria-label="Пациент и сценарий">
       <div class="grid weight-grid">
       ${select('Сценарий','scenario',scenarioOptions,'global')}
-      ${input('Фактическая масса, кг','patientWeight',patientWeight,numeric,'global')}
+      ${input('Масса, кг','patientWeight',patientWeight,numeric,'global')}
       </div>
-      ${draft.note ? `<p class="subtle space">${esc(draft.note)} ${link(draft.source)}</p>` : ''}
-      <div class="actions space">
-        ${button('Сохранить как сценарий','save-as','','class="primary"')}
-        ${draft.id ? button('Обновить сценарий','save-scenario') : ''}
-        ${draft.id ? button('Удалить сценарий','delete-scenario','','class="danger"') : ''}
+      </section>
+      <section class="deck" aria-label="Карточки препаратов" data-deck>
+        ${card ? `<div class="deck-header">
+          <button type="button" data-action="previous-card" aria-label="Предыдущий препарат" ${activeCard === 0 ? 'disabled' : ''}>‹</button>
+          <p role="status">${stages[card.stage]} <span>· ${activeCard+1} / ${deck.length}</span></p>
+          <button type="button" data-action="next-card" aria-label="Следующий препарат" ${activeCard + 1 === deck.length ? 'disabled' : ''}>›</button>
+        </div>${renderRow(card.row, card.stage, card.index)}`
+          : `<div class="panel">${button('Добавить первый препарат','add-row','induction')}</div>`}
+      </section>
+      <div class="deck-actions">
+        ${button('Итог','review','','class="primary"')}
+        ${button('Новый пациент','new-patient')}
       </div>
-      <details data-key="scenario-notes"><summary>Название и описание сценария</summary>
-      <div class="grid">${input('Название','name',draft.name,' maxlength="120"','global')}
-      ${input('Описание','note',draft.note,' maxlength="1000"','global')}</div></details>
-      </section>` + Object.entries(stages).map(([stage, title]) =>
-        `<section class="stage" aria-labelledby="title-${stage}"><div class="bar">
-           <h2 id="title-${stage}">${title}</h2>${button('Добавить строку','add-row',stage)}</div>
-           ${stage === 'maintenance' ? renderMethod() : ''}
-           ${draft[stage].map((row,index) => renderRow(row, stage, index)).join('')}
-         </section>`).join('') + renderReview();
+      <details class="scenario-tools" data-key="scenario-tools"><summary>Настроить сценарий</summary>
+        ${draft.note ? `<p class="subtle">${esc(draft.note)} ${link(draft.source)}</p>` : ''}
+        <div class="grid">${input('Название','name',draft.name,' maxlength="120"','global')}
+        ${input('Описание','note',draft.note,' maxlength="1000"','global')}</div>
+        ${renderMethod()}
+        <div class="actions space">
+          ${button('Добавить препарат на индукцию','add-row','induction')}
+          ${button('Добавить препарат на поддержание','add-row','maintenance')}
+          ${button('Сохранить как сценарий','save-as')}
+          ${draft.id ? button('Обновить сценарий','save-scenario') : ''}
+          ${draft.id ? button('Удалить сценарий','delete-scenario','','class="danger"') : ''}
+        </div>
+      </details>`;
   }
   function renderMethod() {
     return `<div class="grid">
       ${select('Метод','method',Object.entries(methods).map(([id, name]) => option(id,name,draft.method)).join(''),'global')}
       ${draft.method === 'gas' ? input('Анестетик и параметры','gas',draft.gas,' placeholder="Препарат, концентрация или целевая МАК"','global') : ''}
     </div>`;
-  }
-  function renderReview() {
-    return `<details class="panel" data-key="review">
-      <summary>Сводка расчётов</summary>
-      <div id="review"></div>
-    </details>`;
   }
   function renderRow(row, stage, index) {
     const drug = drugFor(row.drug);
@@ -183,36 +198,47 @@
       database.drugs.map(d => option(d.id, d.name, row.drug)).join('');
     const concentrations = drug?.concentrations ?? [];
     const doses = (drug?.doses ?? []).filter(d => units[d.unit].time === infusion && !row.reverse);
-    const doseLabel = row.reverse ? 'Скорость насоса, мл/ч' : 'Доза';
+    const doseLabel = row.reverse ? 'Скорость насоса, мл/ч' : infusion ? 'Скорость инфузии' : 'Доза';
+    const quickConcentration = row.preparation === 'direct' && concentrations.length > 0
+      ? select('Концентрация','savedConcentration',
+        option('', 'Выбрать', '') +
+        concentrations.map((c,i) => option(String(i), c.value + ' ' + c.unit + '/мл', '')).join(''))
+      : '';
     const showWeight = weightBased && row.weightRequired;
     const concentrationName = row.preparation === 'mix' ? 'Единица количества' : 'Единица концентрации';
     const arrows = `<button type="button" data-action="up" aria-label="Выше" ${index === 0 ? 'disabled' : ''}>↑</button>
       <button type="button" data-action="down" aria-label="Ниже" ${index === draft[stage].length-1 ? 'disabled' : ''}>↓</button>`;
     return `<article class="row" data-stage="${stage}" data-index="${index}" aria-label="${esc(drug?.name || row.label || 'Строка расчёта')}">
-      <div class="bar"><h3>${esc(drug?.name || row.label || 'Выбор препарата')}</h3>
-      <div class="actions">${arrows}${button('Убрать','remove-row','','class="danger"')}</div></div>
-      ${row.note ? `<p class="subtle space">${esc(row.note)}</p>` : ''}
-      <div class="grid">
-        ${select('Препарат','drug',drugOptions)}
-        ${stage === 'maintenance' ? select('Введение','kind',option('bolus','Болюс',infusion ? 'infusion' : 'bolus') + option('infusion','Инфузия',infusion ? 'infusion' : 'bolus')) : ''}
-        ${input(doseLabel,'value',row.value,numeric)}
-        ${select(row.reverse ? 'Единица результата' : 'Единица дозы','unit',unitOptions(row.unit, infusion))}
-        ${showWeight ? input(weightLabel,'weight',row.weight,numeric) : ''}
+      <h2>${esc(drug?.name || row.label || 'Выбор препарата')}</h2>
+      ${!drug && !row.label ? `<div class="space">${select('Препарат','drug',drugOptions)}</div>` : ''}
+      <div class="dose-line space">
+        <div>
+          <label for="card-dose">${doseLabel}</label>
+          <div class="stepper">
+            <button type="button" data-action="step-dose" value="-1" aria-label="Уменьшить дозу">−</button>
+            <input id="card-dose" data-field="value" value="${esc(row.value)}"${numeric}>
+            <button type="button" data-action="step-dose" value="1" aria-label="Увеличить дозу">+</button>
+          </div>
+        </div>
+        ${select(row.reverse ? 'Единица результата' : 'Единица','unit',unitOptions(row.unit, infusion))}
       </div>
-      <div class="result"><strong data-answer></strong><small data-math></small></div>
+      ${showWeight ? `<div class="space">${input('Расчётная масса, кг','weight',row.weight,numeric)}
+        ${row.note ? `<p class="subtle">${esc(row.note)}</p>` : ''}</div>` : ''}
+      ${quickConcentration ? `<div class="quick-concentration space">${quickConcentration}</div>` : ''}
+      <div class="result"><strong data-answer></strong><small data-math hidden></small></div>
       ${doses.length ? `<details data-key="${key}-doses"><summary>Справочные и сохранённые дозы</summary>
         ${doses.map(d => `<div class="reference"${d.id === row.preset ? ' aria-current="true"' : ''}>
           <p><b>${esc(d.name)}</b>${d.value ? ' · ' + esc(d.value + ' ' + d.unit) : ''}</p>
           <p class="subtle">${esc(d.note)} ${link(d.source)}</p>
           ${d.value ? button('Подставить дозу','apply-dose',d.id) : button('Ввести дозу в ' + d.unit,'apply-dose',d.id)}
         </div>`).join('')}</details>` : ''}
-      <details data-key="${key}-prep"${infusion || row.concentration || row.preparation === 'mix' ? ' open' : ''}>
-        <summary>${infusion ? 'Настройки инфузии' : 'Концентрация и настройки строки'}</summary>
+      <details data-key="${key}-prep">
+        <summary>Настроить карточку</summary>
         <div class="grid">
         ${infusion ? select('Направление расчёта','reverse',option('false','Доза → мл/ч',String(row.reverse)) + option('true','Мл/ч → доза',String(row.reverse))) : ''}
         ${select('Приготовление раствора','preparation',option('direct','Указать концентрацию',row.preparation) + option('mix','Количество и итоговый объём',row.preparation))}
-        ${row.preparation === 'direct' && concentrations.length ? select('Сохранённая концентрация','savedConcentration',
-          option('','Выбрать или ввести вручную','') + concentrations.map((c,i) => option(String(i), c.value + ' ' + c.unit + '/мл','')).join('')) : ''}
+        ${drug || row.label ? select('Препарат','drug',drugOptions) : ''}
+        ${stage === 'maintenance' ? select('Введение','kind',option('bolus','Болюс',infusion ? 'infusion' : 'bolus') + option('infusion','Инфузия',infusion ? 'infusion' : 'bolus')) : ''}
         ${select(concentrationName,'cUnit',massOptions(row.cUnit))}
         ${row.preparation === 'mix' ? input('Количество препарата','quantity',row.quantity,numeric) +
           input('Итоговый объём раствора, мл','volume',row.volume,numeric) : input('Концентрация, ' + row.cUnit + '/мл','concentration',row.concentration,numeric)}
@@ -223,6 +249,7 @@
         ${input('Примечание к строке','note',row.note)}
         ${!drug ? input('Название препарата вручную','label',row.label) : ''}
         </div>
+        <div class="actions space">${arrows}${button('Убрать','remove-row','','class="danger"')}</div>
       </details>
     </article>`;
   }
@@ -261,29 +288,60 @@
     };
   }
   function updateResults() {
-    const summaries = { induction: [], maintenance: [] };
-    for (const article of main.querySelectorAll('article[data-stage]')) {
-      const { stage, index } = article.dataset;
-      const row = draft[stage][Number(index)];
+    const article = main.querySelector('article[data-stage]');
+    if (article) {
+      const row = rowFrom(article);
       const result = describe(row);
+      const current = number(row.value);
+      const step = doseStep(row);
       article.querySelector('[data-answer]').textContent = result.answer;
       article.querySelector('[data-math]').textContent = result.context;
+      article.querySelector('[data-math]').hidden = !result.ready || !calculate(row, patientWeight).rawConcentration;
+      article.querySelector('[data-action="step-dose"][value="-1"]').disabled = !current || current <= step;
+      const concentrationSelect = article.querySelector('[data-field="savedConcentration"]');
+      if (concentrationSelect) {
+        const concentration = number(row.concentration);
+        const index = drugFor(row.drug).concentrations.findIndex(c =>
+          c.unit === row.cUnit && number(c.value) === concentration
+        );
+        concentrationSelect.value = index < 0 ? '' : String(index);
+        concentrationSelect.options[0].textContent = concentration && index < 0
+          ? fmt(concentration) + ' ' + row.cUnit + '/мл · вручную' : 'Выбрать';
+      }
       for (const el of article.querySelectorAll('input[inputmode="decimal"]')) {
         el.setAttribute('aria-invalid', String(Boolean(el.value.trim() && !number(el.value))));
-      }
-      if (result.ready && (row.drug || row.label)) {
-        summaries[stage].push(`<li><b>${esc(drugFor(row.drug)?.name || row.label)}</b> · ${esc(result.answer)}
-          <br><span class="subtle">${esc(result.context)}</span></li>`);
       }
     }
     const patient = main.querySelector('[data-global="patientWeight"]');
     patient.setAttribute('aria-invalid', String(Boolean(patientWeight.trim() && !number(patientWeight))));
-    main.querySelector('#review').innerHTML = Object.keys(stages).map(stage =>
-      `<h3 class="space">${stages[stage]}</h3>${
-        stage === 'maintenance' && draft.method !== 'none'
-        ? `<p class="subtle">${esc(methods[draft.method])}${draft.method === 'gas' && draft.gas ? ' · ' + esc(draft.gas) : ''}</p>` : ''
-      }${summaries[stage].length ? '<ul>' + summaries[stage].join('') + '</ul>' : '<p class="subtle">Пока нет рассчитанных строк.</p>'}`
-    ).join('');
+  }
+  function doseStep(row) {
+    if (row.reverse) return 0.1;
+    if (units[row.unit].weight) return row.unit === 'мг/кг/мин' ? 0.01 : 0.1;
+    return row.unit.endsWith('/мин') ? 0.1 : 1;
+  }
+  function review() {
+    const content = Object.keys(stages).map(stage => {
+      const rows = draft[stage];
+      const method = stage === 'maintenance' && draft.method !== 'none'
+        ? `<p class="subtle">${esc(methods[draft.method])}${draft.method === 'gas' && draft.gas ? ' · ' + esc(draft.gas) : ''}</p>` : '';
+      if (!rows.length && !method) return '';
+      return `<section class="review-stage space"><h3>${stages[stage]}</h3>${method}
+        ${rows.map((row, index) => {
+          const result = describe(row);
+          const name = drugFor(row.drug)?.name || row.label || 'Препарат не выбран';
+          const position = index + (stage === 'maintenance' ? draft.induction.length : 0);
+          return `<div class="review-row"><b>${esc(name)}</b><strong>${esc(result.answer)}</strong>
+            <small>${esc(result.context)}</small>
+            ${button('Открыть карточку','review-card',String(position))}</div>`;
+        }).join('')}</section>`;
+    }).join('');
+    dialog.innerHTML = `<div class="bar"><h2 id="dialog-title">Итог</h2>${button('К расчёту','close')}</div>
+      <p class="subtle">${esc([draft.name, number(patientWeight) && fmt(number(patientWeight)) + ' кг'].filter(Boolean).join(' · '))}</p>
+      ${content || '<p class="space">Добавь препарат, чтобы увидеть расчёт.</p>'}
+      <p class="subtle space">Сверь дозы, расчётную массу и фактическую концентрацию перед введением.</p>`;
+    dialog.setAttribute('aria-labelledby','dialog-title');
+    dialog.showModal();
   }
   function renderCatalog() {
     return `<div class="bar"><h2>Справочник препаратов</h2>
@@ -383,7 +441,12 @@
       row.value = '';
       row.reverse = false;
       row.preset = '';
-    } else if (field === 'savedConcentration' && el.value !== '') {
+    } else if (field === 'savedConcentration') {
+      if (!el.value) {
+        row.concentration = '';
+        render(true);
+        return;
+      }
       const found = drugFor(row.drug)?.concentrations[Number(el.value)];
       if (!found) return;
       row.cUnit = found.unit;
@@ -395,7 +458,7 @@
     } else {
       if (field === 'value') row.preset = '';
       if (field === 'unit') {
-        row.value = '';
+        if (!row.reverse) row.value = '';
         row.preset = '';
       }
       if (field === 'preparation') {
@@ -415,6 +478,7 @@
   function loadPlan(id) {
     draft = clone(database.scenarios.find(item => item.id === id) || emptyPlan());
     dirty = false;
+    activeCard = 0;
     render();
   }
   function loadScenario(id) {
@@ -426,6 +490,26 @@
         button('Открыть сценарий','load-scenario',id,'class="primary"'));
     } else loadPlan(id);
   }
+  main.addEventListener('touchstart', event => {
+    touchStart = null;
+    if (event.touches.length !== 1 || !event.target.closest('[data-deck]') ||
+        event.target.closest('input, select, textarea, a, [contenteditable]')) return;
+    touchStart = event.touches[0];
+  }, { passive: true });
+  main.addEventListener('touchcancel', () => { touchStart = null; }, { passive: true });
+  main.addEventListener('touchend', event => {
+    if (!touchStart) return;
+    const start = touchStart;
+    touchStart = null;
+    const end = [...event.changedTouches].find(touch => touch.identifier === start.identifier);
+    if (!end) return;
+    const dx = end.clientX - start.clientX;
+    const dy = end.clientY - start.clientY;
+    if (Math.abs(dx) >= 55 && Math.abs(dx) > 1.35 * Math.abs(dy)) {
+      if (event.cancelable) event.preventDefault();
+      moveCard(activeCard + (dx < 0 ? 1 : -1));
+    }
+  }, { passive: false });
   main.addEventListener('input', event => {
     const el = event.target;
     if (el.tagName === 'SELECT' || el.type === 'file') return;
@@ -447,7 +531,7 @@
       if (!file) return;
       try {
         if (file.size > 5_000_000) throw Error('Файл настроек превышает 5 МБ.');
-        pendingImport = validate(JSON.parse(await file.text()));
+        pendingImport = upgrade(validate(JSON.parse(await file.text())));
         promptDialog('Заменить настройки?',
           `<p class="subtle space">В файле препаратов: ${pendingImport.drugs.length}, сценариев: ${pendingImport.scenarios.length}. Импорт заменит текущие препараты и сценарии.</p>`,
           button('Импортировать','import','','class="primary"'));
@@ -543,6 +627,21 @@
     const container = buttonEl.closest('[data-stage]');
     const row = rowFrom(buttonEl);
     switch (action) {
+      case 'previous-card': moveCard(activeCard - 1); break;
+      case 'next-card': moveCard(activeCard + 1); break;
+      case 'review': review(); break;
+      case 'review-card':
+        dialog.close();
+        moveCard(Number(value));
+        break;
+      case 'step-dose': {
+        const field = container.querySelector('[data-field="value"]');
+        const step = doseStep(row);
+        const next = (number(row.value) || 0) + Number(value) * step;
+        field.value = new Intl.NumberFormat('ru-RU', { useGrouping:false, maximumSignificantDigits: 15 }).format(next);
+        handleField(field);
+        break;
+      }
       case 'new-patient':
         if (dirty) {
           promptDialog('Начать новый расчёт?',
@@ -582,6 +681,7 @@
       }
       case 'add-row':
         draft[value].push(blank());
+        activeCard = draft[value].length - 1 + (value === 'maintenance' ? draft.induction.length : 0);
         dirty = true;
         render(true);
         main.querySelector(`[data-stage="${value}"]:last-of-type [data-field="drug"]`)?.focus();
@@ -592,7 +692,13 @@
         const rows = draft[container.dataset.stage];
         const index = Number(container.dataset.index);
         rows.splice(index, 1);
-        if (action !== 'remove-row') rows.splice(index + (action === 'up' ? -1 : 1), 0, row);
+        if (action === 'remove-row') {
+          activeCard = Math.max(0, Math.min(activeCard, cards().length - 1));
+        } else {
+          const offset = action === 'up' ? -1 : 1;
+          rows.splice(index + offset, 0, row);
+          activeCard += offset;
+        }
         dirty = true;
         render();
         break;
