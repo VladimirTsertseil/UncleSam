@@ -1,11 +1,13 @@
 (() => {
+  const scales = { 'мг':1000, 'мкг':1, 'ммоль':1 };
+  const dimension = unit => unit === 'ммоль' ? 'ммоль' : 'mass';
   const units = Object.fromEntries(
-    ['мг', 'мкг'].flatMap((mass, index) =>
+    Object.keys(scales).flatMap(mass =>
       ['', '/кг'].flatMap(weight =>
         ['', '/ч', '/мин'].map(time => [
           mass + weight + time,
           { mass, weight: Boolean(weight), time: Boolean(time),
-            factor: (index ? 1 : 1000) * (time === '/мин' ? 60 : 1) }
+            factor: scales[mass] * (time === '/мин' ? 60 : 1) }
         ])
       )
     )
@@ -23,14 +25,15 @@
     const cValue = number(row.concentration);
     const quantity = number(row.quantity);
     const volume = number(row.volume);
-    const cScale = row.cUnit === 'мг' ? 1000 : 1;
+    const cScale = scales[row.cUnit];
     const rawConcentration = row.preparation === 'mix'
       ? quantity && volume && quantity / volume : cValue;
-    const concentration = rawConcentration && rawConcentration * cScale;
+    const concentration = unit && dimension(unit.mass) === dimension(row.cUnit)
+      ? rawConcentration && rawConcentration * cScale : null;
     const result = { value, weight, concentration, rawConcentration };
     if (!unit || !value || (unit.weight && !weight)) return result;
     const factor = unit.factor * (unit.weight ? weight : 1);
-    const massScale = unit.mass === 'мг' ? 1000 : 1;
+    const massScale = scales[unit.mass];
     if (row.reverse && unit.time) {
       if (concentration) {
         result.amount = value * concentration / massScale;
@@ -43,5 +46,5 @@
     }
     return result;
   };
-  globalThis.AnesthesiaMath = { units, number, calculate };
+  globalThis.AnesthesiaMath = { units, number, calculate, scales, dimension };
 })();

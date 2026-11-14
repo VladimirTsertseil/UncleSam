@@ -96,9 +96,6 @@ nav { margin-top: 12px; }
   .weight-grid { grid-template-columns: minmax(0, 1fr) 97px; }
 }
 .pump-shell { width: min(100%, 760px); margin: 0 auto 16px; display: grid; gap: 10px; }
-.pump-tabs { display: flex; gap: 8px; margin: 0 auto 14px; width: min(100%, 760px); }
-.pump-tabs button { flex: 1; }
-.pump-tabs [aria-pressed="true"] { background: var(--accent-pale); color: var(--accent); border-color: #83af97; }
 .pump-hero h2 { font-size: clamp(1.5rem, 6vw, 2.15rem); }
 .pump-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 9px; align-items: end; margin-top: 8px; }
 .pump-hero .pump-grid { grid-template-columns: minmax(0, 1fr) minmax(126px, .8fr); }
@@ -118,4 +115,10 @@ nav { margin-top: 12px; }
   nav { gap: 0; }
   nav button { padding-inline: 7px; font-size: .94rem; }
   .pump-hero .pump-grid { grid-template-columns: 1fr; }
+}
+.shared-patient { margin-bottom: 12px; display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: end; }
+.shared-patient .patient-reset { white-space: nowrap; }
+@media (max-width: 610px) {
+  .shared-patient { grid-template-columns: 1fr; }
+  .shared-patient .patient-reset { justify-self: end; min-height: 40px; }
 }

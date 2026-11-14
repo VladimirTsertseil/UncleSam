@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const { units, number, calculate } = AnesthesiaMath;
+  const { units, number, calculate, scales, dimension } = AnesthesiaMath;
   const { fresh, upgrade, blank, plan } = AnesthesiaCatalog;
   const storageKey = 'anesthesia-calculator-v1';
   const main = document.querySelector('#main');
@@ -42,22 +42,22 @@
   const unitOptions = (selection, time) => Object.entries(units)
     .filter(([, unit]) => time === undefined || time === unit.time)
     .map(([label]) => option(label, label, selection)).join('');
-  const massOptions = selection => ['мг','мкг'].map(mass => option(mass, mass, selection)).join('');
+  const massOptions = (selection, allowed = Object.keys(scales)) => allowed.map(mass => option(mass, mass, selection)).join('');
 
   function validate(data) {
     const string = value => typeof value === 'string';
     const named = item => item && string(item.id) && item.id && string(item.name) && item.name.trim();
     const unique = items => new Set(items.map(item => item.id)).size === items.length;
     const decimal = value => string(value) && (!value.trim() || number(value) !== null);
-    const mass = value => ['мг','мкг'].includes(value);
+    const mass = value => Object.hasOwn(scales, value);
     const list = (items, test) => Array.isArray(items) && items.every(test);
-    if (![1, 2, 3].includes(data?.version) || !list(data.drugs, drug => named(drug) &&
+    if (![1, 2, 3, 4].includes(data?.version) || !list(data.drugs, drug => named(drug) &&
       (drug.group === undefined || string(drug.group)) &&
       (drug.mixtures === undefined || list(drug.mixtures, m => m && string(m.quantity) && number(m.quantity) &&
         mass(m.unit) && string(m.volume) && number(m.volume))) &&
       list(drug.concentrations, c => c && number(c.value) && string(c.value) && mass(c.unit)) &&
       list(drug.doses, d => named(d) && decimal(d.value) && isUnit(d.unit) &&
-        string(d.note) && string(d.source) && (!d.source || url(d.source))) && unique(drug.doses)) ||
+        (d.referenceOnly === undefined || typeof d.referenceOnly === 'boolean') && string(d.note) && string(d.source) && (!d.source || url(d.source))) && unique(drug.doses)) ||
       !unique(data.drugs)) throw Error('Некорректный справочник препаратов.');
     const ids = new Set(data.drugs.map(drug => drug.id));
     const validRow = row => row && (row.drug === null || ids.has(row.drug)) && isUnit(row.unit) &&
@@ -72,7 +72,7 @@
       !unique(data.scenarios)) throw Error('Некорректные сценарии.');
     return data;
   }
-  const migrate = data => addInfusionCatalog(data.version === 3 ? data : upgrade(data));
+  const migrate = data => addInfusionCatalog(data.version >= 3 ? data : upgrade(data));
   let database = addInfusionCatalog(fresh());
   let startupMessage = '';
   try {
@@ -91,12 +91,14 @@
   let infusionCard = 0;
   const infusionDrugs = () => database.drugs.filter(drug =>
     drug.id !== 'eto' || drug.doses.some(dose => units[dose.unit]?.time));
+  const hasPump = drug => !drug.doses.some(dose => dose.referenceOnly) ||
+    drug.doses.some(dose => !dose.referenceOnly && units[dose.unit].time);
   const defaultPumpDrug = () => infusionDrugs().find(drug => drug.id === 'nor')?.id ?? infusionDrugs()[0]?.id;
   let pump = newPump(defaultPumpDrug());
   function newPump(id) {
     const drug = infusionDrugs().find(item => item.id === id);
-    const unit = drug?.doses.find(dose => units[dose.unit]?.time)?.unit || 'мкг/кг/мин';
-    return { ...blank(drug?.id ?? null, unit), preparation: 'mix', cUnit: 'мг', reverse: true };
+    const unit = drug?.doses.find(dose => !dose.referenceOnly && units[dose.unit]?.time)?.unit || 'мкг/кг/мин';
+    return { ...blank(drug?.id ?? null, unit), preparation: 'mix', cUnit: dimension(units[unit].mass) === 'ммоль' ? 'ммоль' : 'мг', reverse: true };
   }
   let touchStart;
   let editingDrug;
@@ -145,8 +147,9 @@
       else el.removeAttribute('aria-current');
     }
     const showCards = tab === 'calc' || (tab === 'pump' && infusionView === 'maintenance');
-    main.innerHTML = showCards ? renderCalc() : tab === 'pump' ? renderPump()
+    const content = showCards ? renderCalc() : tab === 'pump' ? renderPump()
       : tab === 'drugs' ? renderCatalog() : renderSettings();
+    main.innerHTML = (tab === 'calc' || tab === 'pump' ? patientPanel() : '') + content;
     if (showCards || tab === 'pump') {
       for (const details of main.querySelectorAll('details[data-key]')) {
         if (opened.has(details.dataset.key)) details.open = true;
@@ -167,26 +170,24 @@
     setCard(index);
     render();
   }
-  function pumpTabs() {
-    return `<div class="pump-tabs" aria-label="Разделы инфузий">
-      ${button('Инфузомат','infusion-view','calculator',`aria-pressed="${infusionView === 'calculator'}"`)}
-      ${button('Поддержание','infusion-view','maintenance',`aria-pressed="${infusionView === 'maintenance'}"`)}
-    </div>`;
-  }
-  function renderCalc() {
+  function patientPanel() {
     const scenarioOptions = option('', 'Новый сценарий', draft.id) + database.scenarios
       .map(scenario => option(scenario.id, scenario.name, draft.id)).join('');
+    return `<section class="panel patient-panel shared-patient" aria-label="Текущий пациент">
+      <div class="grid weight-grid">
+        ${select('Сценарий','scenario',scenarioOptions,'global')}
+        ${input('Масса, кг','patientWeight',patientWeight,numeric,'global')}
+      </div>
+      ${button('Новый пациент','new-patient','','class="patient-reset"')}
+    </section>`;
+  }
+  function renderCalc() {
     const deck = cards();
     const index = currentIndex();
     const stage = currentStage();
     const maintenance = stage === 'maintenance';
     const card = deck[index];
-    return (maintenance ? pumpTabs() : '') + `<section class="panel patient-panel" aria-label="Пациент и сценарий">
-      <div class="grid weight-grid">
-      ${select('Сценарий','scenario',scenarioOptions,'global')}
-      ${input('Масса, кг','patientWeight',patientWeight,numeric,'global')}
-      </div>
-      </section>
+    return (maintenance ? button('К инфузомату','infusion-view','calculator') : '') + `
       <section class="deck" aria-label="Карточки препаратов" data-deck>
         ${card ? `<div class="deck-header">
           <button type="button" data-action="previous-card" aria-label="Предыдущий препарат" ${index === 0 ? 'disabled' : ''}>‹</button>
@@ -197,7 +198,6 @@
       </section>
       <div class="deck-actions">
         ${button('Итог','review','','class="primary"')}
-        ${button('Новый пациент','new-patient')}
       </div>
       <details class="scenario-tools" data-key="scenario-tools"><summary>Настроить сценарий</summary>
         ${draft.note ? `<p class="subtle">${esc(draft.note)} ${link(draft.source)}</p>` : ''}
@@ -226,8 +226,8 @@
     const weightLabel = row.weightRequired ? 'Расчётная масса, кг · требуется' : 'Расчётная масса, кг · по желанию';
     const drugOptions = option('', 'Выбрать препарат', row.drug || '') +
       database.drugs.map(d => option(d.id, d.name, row.drug)).join('');
-    const concentrations = drug?.concentrations ?? [];
-    const doses = (drug?.doses ?? []).filter(d => units[d.unit].time === infusion && !row.reverse);
+    const concentrations = (drug?.concentrations ?? []).filter(c => dimension(c.unit) === dimension(units[row.unit].mass));
+    const doses = (drug?.doses ?? []).filter(d => !d.referenceOnly && units[d.unit].time === infusion && !row.reverse);
     const doseLabel = row.reverse ? 'Скорость насоса, мл/ч' : infusion ? 'Скорость инфузии' : 'Доза';
     const quickConcentration = row.preparation === 'direct' && concentrations.length > 0
       ? select('Концентрация','savedConcentration',
@@ -269,7 +269,7 @@
         ${select('Приготовление раствора','preparation',option('direct','Указать концентрацию',row.preparation) + option('mix','Количество и итоговый объём',row.preparation))}
         ${drug || row.label ? select('Препарат','drug',drugOptions) : ''}
         ${stage === 'maintenance' ? select('Введение','kind',option('bolus','Болюс',infusion ? 'infusion' : 'bolus') + option('infusion','Инфузия',infusion ? 'infusion' : 'bolus')) : ''}
-        ${select(concentrationName,'cUnit',massOptions(row.cUnit))}
+        ${select(concentrationName,'cUnit',massOptions(row.cUnit, Object.keys(scales).filter(unit => dimension(unit) === dimension(units[row.unit].mass))))}
         ${row.preparation === 'mix' ? input('Количество препарата','quantity',row.quantity,numeric) +
           input('Итоговый объём раствора, мл','volume',row.volume,numeric) : input('Концентрация, ' + row.cUnit + '/мл','concentration',row.concentration,numeric)}
         ${!showWeight && weightBased ? input(weightLabel,'weight',row.weight,numeric) : ''}
@@ -331,7 +331,7 @@
       const concentrationSelect = article.querySelector('[data-field="savedConcentration"]');
       if (concentrationSelect) {
         const concentration = number(row.concentration);
-        const index = drugFor(row.drug).concentrations.findIndex(c =>
+        const index = drugFor(row.drug).concentrations.filter(c => dimension(c.unit) === dimension(units[row.unit].mass)).findIndex(c =>
           c.unit === row.cUnit && number(c.value) === concentration
         );
         concentrationSelect.value = index < 0 ? '' : String(index);
@@ -401,41 +401,50 @@
     const drugOptions = [...groups].map(([group, items]) =>
       `<optgroup label="${esc(group)}">${items.map(item => option(item.id,item.name,pump.drug)).join('')}</optgroup>`
     ).join('');
-    if (!drug) return pumpTabs() + `<section class="panel"><p>Добавь препарат в справочник.</p></section>`;
-    const doses = drug.doses.filter(dose => units[dose.unit].time);
+    if (!drug) return `<section class="panel"><p>Добавь препарат в справочник.</p></section>`;
+    const doses = drug.doses.filter(dose => dose.referenceOnly || units[dose.unit].time);
     const references = doses.map(dose => `<div class="reference"><p><b>${esc(dose.name)}</b></p>
       <p class="subtle">${esc(dose.note || (dose.value ? dose.value + ' ' + dose.unit : ''))} ${link(dose.source)}</p>
-      ${button(dose.value ? 'Подставить ' + dose.value + ' ' + dose.unit : 'Ввести дозу в ' + dose.unit,'pump-reference',dose.id)}</div>`).join('');
-    const mixtures = (drug.mixtures || []).map((m,i) => option('m'+i,m.quantity+' '+m.unit+' / '+m.volume+' мл',''));
-    const concentrations = drug.concentrations.map((c,i) => option('c'+i,c.value+' '+c.unit+'/мл',''));
+      ${dose.referenceOnly ? '' : button(dose.value ? 'Подставить ' + dose.value + ' ' + dose.unit : 'Ввести дозу в ' + dose.unit,'pump-reference',dose.id)}</div>`).join('');
+    const mixtures = (drug.mixtures || []).flatMap((m,i) => dimension(m.unit) !== dimension(units[pump.unit].mass) ? [] : [option('m'+i,m.quantity+' '+m.unit+' / '+m.volume+' мл','')]);
+    const concentrations = drug.concentrations.flatMap((c,i) => dimension(c.unit) !== dimension(units[pump.unit].mass) ? [] : [option('c'+i,c.value+' '+c.unit+'/мл','')]);
     const prep = pump.preparation === 'mix';
+    const allowed = dimension(units[pump.unit].mass) === 'ммоль' ? ['ммоль'] : ['мг','мкг'];
+    const doseUnits = Object.keys(units).filter(key => units[key].time && allowed.includes(units[key].mass))
+      .map(key => option(key,key,pump.unit)).join('');
     const doseBlock = `<section class="panel pump-panel"><div class="bar"><h3>Доза</h3>
       ${!pump.reverse ? '<span class="pump-badge">Ввод</span>' : ''}</div><div class="pump-grid">
       ${pump.reverse ? '<output data-pump-dose class="pump-result" aria-label="Рассчитанная доза">—</output>' : pumpNumber('Заданная доза','value',pump.value)}
-      ${select('Единицы','unit',unitOptions(pump.unit,true),'pump')}</div></section>`;
+      ${select('Единицы','unit',doseUnits,'pump')}</div></section>`;
     const rateBlock = `<section class="panel pump-panel"><div class="bar"><h3>Скорость инфузомата</h3>
       ${pump.reverse ? '<span class="pump-badge">Ввод</span>' : ''}</div>
       ${pump.reverse ? pumpNumber('Скорость, мл/ч','value',pump.value)
         : '<p class="pump-result"><output data-pump-rate aria-label="Рассчитанная скорость">—</output> <small>мл/ч</small></p>'}</section>`;
-    return pumpTabs() + `<div class="pump-shell">
+    const templateOptions = draft.maintenance.map((row,index) => {
+      const item = drugFor(row.drug);
+      if (!item || !hasPump(item) || !units[row.unit].time) return '';
+      return option(String(index), item.name + (row.value ? ' · ' + row.value + ' ' + (row.reverse ? 'мл/ч' : row.unit) : ''),'');
+    }).join('');
+    return `<div class="pump-shell">
       <section class="panel pump-hero">
         <h2>${esc(drug.name)}</h2>
         <div class="pump-grid">
           ${select('Препарат','drug',drugOptions,'pump')}
-          ${pumpNumber('Масса, кг','weight',patientWeight)}
+          ${templateOptions ? select('Из сценария','template',option('','Выбрать схему', '') + templateOptions,'pump') : ''}
         </div>
       </section>
-      <details class="panel pump-reference" data-key="pump-reference">
+      <details class="panel pump-reference" data-key="pump-reference"${hasPump(drug) ? '' : ' open'}>
         <summary>Справочные дозы ${doses.length ? '· '+doses.length : ''}</summary>
         ${references || '<p class="subtle">Для этого препарата можно сохранить дозу во вкладке «Препараты».</p>'}
       </details>
-      <section class="panel pump-panel">
+      ${hasPump(drug) ? `<section class="panel pump-panel">
         <div class="bar"><h3>Разведение</h3>
           ${select('Формат','preparation',option('mix','Количество / итоговый объём',pump.preparation) +
             option('direct','Готовая концентрация',pump.preparation),'pump')}</div>
         <div class="pump-grid">
+          ${pump.weightRequired ? pumpNumber('Расчётная масса, кг','weight',pump.weight) : ''}
           ${prep ? pumpNumber('Количество препарата','quantity',pump.quantity) : pumpNumber('Концентрация на мл','concentration',pump.concentration)}
-          ${select('Единица','cUnit',massOptions(pump.cUnit),'pump')}
+          ${select('Единица','cUnit',massOptions(pump.cUnit,allowed),'pump')}
           ${prep ? pumpNumber('Итоговый объём, мл','volume',pump.volume) : ''}
         </div>
         <p class="subtle" data-pump-concentration></p>
@@ -446,14 +455,17 @@
       </section>
       <div class="pump-direction">${button(pump.reverse ? 'Скорость → доза · переключить' : 'Доза → скорость · переключить','pump-direction')}</div>
       ${pump.reverse ? rateBlock + doseBlock : doseBlock + rateBlock}
-      <p role="status" class="subtle pump-status" data-pump-status></p>
+      <p role="status" class="subtle pump-status" data-pump-status></p>` : ''}
+      ${button('Настроить схему поддержания','infusion-view','maintenance')}
     </div>`;
   }
   function updatePump() {
+    const patient = main.querySelector('[data-global="patientWeight"]');
+    patient?.setAttribute('aria-invalid', String(Boolean(patientWeight.trim() && !number(patientWeight))));
     const status = main.querySelector('[data-pump-status]');
     if (!status) return;
     const unit = units[pump.unit];
-    const result = calculate(pump, patientWeight);
+    const result = calculate(pump, pump.weightRequired ? '' : patientWeight);
     const answer = Number.isFinite(result.answer) && result.answer > 0 ? fmt(result.answer) : '—';
     const dose = main.querySelector('[data-pump-dose]');
     const rate = main.querySelector('[data-pump-rate]');
@@ -464,7 +476,7 @@
       ? fmt(result.rawConcentration) + ' ' + pump.cUnit + '/мл' : '';
     const written = [
       !c ? 'Укажи разведение или концентрацию' : '',
-      unit.weight && !result.weight ? 'Укажи массу' : '',
+      unit.weight && !result.weight ? (pump.weightRequired ? 'Укажи расчётную массу' : 'Укажи массу') : '',
       !result.value ? (pump.reverse ? 'Укажи скорость' : 'Укажи дозу') : ''
     ].filter(Boolean);
     status.textContent = written.length ? written.join(' · ') : answer === '—' ? 'Значения вне диапазона расчёта' : '';
@@ -479,6 +491,9 @@
   function changePump(field, value) {
     if (field === 'drug') {
       pump = {...newPump(value), reverse:pump.reverse};
+    } else if (field === 'template') {
+      const row = value === '' ? null : draft.maintenance[Number(value)];
+      if (row && units[row.unit]?.time && drugFor(row.drug)) pump = clone(row);
     } else if (field === 'preset') {
       const drug = drugFor(pump.drug);
       const index = Number(value.slice(1));
@@ -504,7 +519,8 @@
     return `<div class="bar"><h2>Справочник препаратов</h2>
       ${button('Добавить препарат','add-drug','','class="primary"')}</div>` + database.drugs.map(drug =>
       `<section class="row"><div class="bar"><h3>${esc(drug.name)}</h3>
-      ${button('Редактировать','edit-drug',drug.id)}</div>
+      <div class="actions">${drug.doses.length ? button('Справочник','drug-reference',drug.id) : ''}
+      ${button('Редактировать','edit-drug',drug.id)}</div></div>
       <p class="subtle">${drug.concentrations.map(c => esc(c.value + ' ' + c.unit + '/мл')).join(' · ')}
       ${drug.doses.length ? (drug.concentrations.length ? ' · ' : '') + drug.doses.length + ' справочных записей' : ''}</p></section>`
     ).join('');
@@ -604,7 +620,7 @@
         render(true);
         return;
       }
-      const found = drugFor(row.drug)?.concentrations[Number(el.value)];
+      const found = drugFor(row.drug)?.concentrations.filter(c => dimension(c.unit) === dimension(units[row.unit].mass))[Number(el.value)];
       if (!found) return;
       row.cUnit = found.unit;
       row.concentration = found.value;
@@ -628,12 +644,18 @@
         row.quantity = '';
       }
       row[field] = el.value;
+      if (field === 'unit' && dimension(units[row.unit].mass) !== dimension(row.cUnit)) {
+        row.cUnit = units[row.unit].mass;
+        row.concentration = '';
+        row.quantity = '';
+      }
     }
     if (el.tagName === 'SELECT') render(true);
     else updateResults();
   }
   function loadPlan(id) {
     draft = clone(database.scenarios.find(item => item.id === id) || emptyPlan());
+    pump = newPump(pump.drug);
     dirty = false;
     activeCard = 0;
     infusionCard = 0;
@@ -672,15 +694,15 @@
     const el = event.target;
     if (el.tagName === 'SELECT' || el.type === 'file') return;
     if (el.dataset.pump) {
-      if (el.dataset.pump === 'weight') patientWeight = el.value;
-      else pump[el.dataset.pump] = el.value;
+      pump[el.dataset.pump] = el.value;
       updatePump();
       return;
     }
     const global = el.dataset.global;
     if (global === 'patientWeight') {
       patientWeight = el.value;
-      updateResults();
+      if (tab === 'pump' && infusionView === 'calculator') updatePump();
+      else updateResults();
     } else if (global) {
       draft[global] = el.value;
       dirty = true;
@@ -802,7 +824,7 @@
         render();
         break;
       case 'pump-direction': {
-        const result = calculate(pump, patientWeight);
+        const result = calculate(pump, pump.weightRequired ? '' : patientWeight);
         pump.reverse = !pump.reverse;
         pump.value = decimalInput(result.answer);
         render(true);
@@ -812,17 +834,21 @@
         const field = buttonEl.dataset.stepField;
         const step = field === 'value' ? pumpStep() : field === 'quantity' || field === 'concentration'
           ? (pump.cUnit === 'мг' ? 0.1 : 1) : 1;
-        const previous = field === 'weight' ? patientWeight : pump[field];
+        const previous = pump[field];
         const next = decimalInput((number(previous) || 0) + Number(value) * step);
-        if (field === 'weight') patientWeight = next;
-        else pump[field] = next;
+        pump[field] = next;
         main.querySelector(`input[data-pump="${field}"]`).value = next;
         updatePump();
         break;
       }
       case 'pump-reference': {
         const dose = drugFor(pump.drug)?.doses.find(d => d.id === value);
-        if (!dose) return;
+        if (!dose || dose.referenceOnly) return;
+        if (dimension(units[dose.unit].mass) !== dimension(pump.cUnit)) {
+          pump.cUnit = units[dose.unit].mass;
+          pump.quantity = '';
+          pump.concentration = '';
+        }
         pump.reverse = false;
         pump.unit = dose.unit;
         pump.value = dose.value;
@@ -864,7 +890,7 @@
         break;
       }
       case 'new-patient':
-        if (dirty) {
+        if (dirty || patientWeight || pump.value || pump.quantity || pump.concentration) {
           promptDialog('Начать новый расчёт?',
             '<p class="subtle space">Масса пациента и правки текущего расчёта будут сброшены.</p>',
             button('Начать расчёт','confirm-new-patient','','class="primary"'));
@@ -874,7 +900,8 @@
       case 'confirm-new-patient':
         dialog.close();
         patientWeight = '';
-        pump = newPump(pump.drug);
+        pump = newPump(defaultPumpDrug());
+        infusionView = 'calculator';
         loadPlan(draft.id);
         notify('Открыт новый расчёт.');
         break;
@@ -928,12 +955,26 @@
       case 'apply-dose': {
         const dose = drugFor(row.drug)?.doses.find(item => item.id === value);
         if (!dose) return;
+        if (dimension(units[dose.unit].mass) !== dimension(row.cUnit)) {
+          row.cUnit = units[dose.unit].mass;
+          row.quantity = '';
+          row.concentration = '';
+        }
         row.unit = dose.unit;
         row.value = dose.value;
         row.preset = dose.id;
         dirty = true;
         render(true);
         main.querySelector(`[data-stage="${container.dataset.stage}"][data-index="${container.dataset.index}"] [data-field="value"]`)?.focus();
+        break;
+      }
+      case 'drug-reference': {
+        const drug = drugFor(value);
+        if (!drug) break;
+        const body = drug.doses.map(dose => `<div class="reference">
+          <p><b>${esc(dose.name)}</b>${dose.value ? ' · ' + esc(dose.value + ' ' + dose.unit) : ''}</p>
+          <p class="subtle">${esc(dose.note)} ${link(dose.source)}</p></div>`).join('');
+        promptDialog(drug.name, body, '');
         break;
       }
       case 'add-drug':

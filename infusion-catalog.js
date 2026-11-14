@@ -64,10 +64,64 @@
       dose('inf-atra-maintain','Поддержание нервно-мышечного блока',mgHour,'0,3–0,6 мг/кг/ч при длительных вмешательствах. Ориентироваться на количественный мониторинг.', 'https://www.rlsnet.ru/active-substance/atrakuriya-bezilat-1004')
     ])
   ];
+  const ukka = 'https://www.ukkidney.org/sites/default/files/FINAL%20VERSION%20-%20UKKA%20CLINICAL%20PRACTICE%20GUIDELINE%20-%20MANAGEMENT%20OF%20HYPERKALAEMIA%20IN%20ADULTS%20-%20191223.pdf';
+  const asra = 'https://rapm.bmj.com/content/rapm/early/2020/11/04/rapm-2020-101986.full.pdf';
+  const reference = (id, name, note, source) => ({ ...dose(id, name, 'мг', note, source), referenceOnly:true });
+  const electrolytes = 'Электролиты и кислотно-основное состояние';
+  const additions = [
+    drug('metoprolol','Метопролол',pressure, [
+      { ...dose('metoprolol-svt','Наджелудочковая тахикардия · Беталок в/в','мг',
+        'В инструкции начальная доза 5 мг со скоростью 1–2 мг/мин. Решение о повторном введении зависит от ЭКГ, давления, ЧСС и противопоказаний.',
+        'https://www.rlsnet.ru/drugs/betalok-532','5'), referenceOnly:true }
+    ]),
+    drug('kcl','Калия хлорид',electrolytes, [
+      dose('kcl-replacement','Коррекция гипокалиемии · пример ограничения из инструкции','ммоль/ч',
+        'По инструкции DailyMed к концентрату: при калии сыворотки выше 2,5 ммоль/л скорость не выше 10 ммоль/ч, концентрация до 40 ммоль/л. Концентрат вводят только после разведения, без болюса. Подбор зависит от калия, функции почек, доступа и локального протокола.',
+        'https://dailymed.nlm.nih.gov/dailymed/downloadpdffile.cfm?setId=46c162d4-0af9-4d14-8781-941a9117428c')
+    ]),
+    drug('calcium-chloride','Кальция хлорид',electrolytes, [
+      reference('cacl-ukka','Гиперкалиемия с изменениями ЭКГ · при остановке кровообращения или угрозе остановки',
+        'UK Kidney Association: 10 мл 10% препарата, содержащих 6,8 ммоль кальция, в/в за 5 минут. Сверь содержание элементарного кальция по маркировке: гидрат и состав ампулы могут отличаться. Кальций стабилизирует миокард, концентрацию калия снижают другими средствами.',ukka)
+    ]),
+    drug('calcium-gluconate','Кальция глюконат',electrolytes, [
+      reference('caglu-ukka','Гиперкалиемия с изменениями ЭКГ · вне остановки и угрозы остановки кровообращения',
+        'UK Kidney Association: 30 мл 10% раствора (около 6,8 ммоль кальция) в/в за 10 минут. Сверь содержание элементарного кальция по маркировке. Кальция хлорид и глюконат отличаются количеством кальция на мл.',ukka),
+      reference('caglu-hypocalcemia','Острая гипокальциемия · инструкция к раствору 100 мг/мл',
+        'Для взрослых в инструкции указано 5–10 мл. Внутривенное введение медленное или капельное. Дозу подбирают по клинической картине и кальцию.',
+        'https://www.lsgeotar.ru/drugs/calcium-gluconate-BBcq')
+    ]),
+    drug('bicarbonate','Натрия гидрокарбонат',electrolytes, [
+      dose('bicarb-acidosis','Коррекция метаболического ацидоза · 8,4%','ммоль/ч',
+        '8,4% соответствует 1 ммоль/мл. В инструкции B. Braun ориентировочное количество в ммоль = дефицит оснований (положительная величина, ммоль/л) × масса (кг) × 0,2. Это суммарное количество, скорость вводится отдельно по назначению. Коррекцию уточняют по газам крови.',
+        'https://www.medicines.org.uk/emc/product/15216/smpc')
+    ]),
+    drug('lipid20','Липидная эмульсия 20%','Неотложные состояния', [
+      reference('last-call','LAST · системная токсичность местных анестетиков',
+        'Прекрати введение местного анестетика, позови помощь, обеспечь дыхательные пути, оксигенацию и вентиляцию. Рассмотри раннее введение 20% эмульсии. При судорогах предпочтителен бензодиазепин.',asra),
+      reference('last-under','Старт · масса меньше 70 кг',
+        'Болюс около 1,5 мл/кг за 2–3 минуты, затем инфузия около 0,25 мл/кг/мин (15 мл/кг/ч).',asra),
+      reference('last-over','Старт · масса больше 70 кг',
+        'Болюс около 100 мл за 2–3 минуты, затем около 250 мл за 15–20 минут. У границы 70 кг проверь локальный алгоритм, в оригинальной памятке порог обозначен как «меньше» и «больше».',asra),
+      reference('last-unstable','Если гемодинамика остаётся нестабильной',
+        'Повтори болюс и удвой скорость инфузии. После стабилизации продолжай инфузию более 15 минут. Общая доза эмульсии не должна превышать 12 мл/кг.',asra),
+      reference('last-resus','Особенности реанимации и наблюдение',
+        'При необходимости адреналина ASRA рекомендует начинать с дозы менее 1 мкг/кг. Избегай вазопрессина, бета-блокаторов, блокаторов кальциевых каналов и местных анестетиков. Наблюдение после судорог — 2 ч, после сердечно-сосудистой нестабильности — 4–6 ч, после остановки кровообращения — по клинической ситуации.',asra)
+    ]),
+    drug('ephedrine','Эфедрин',pressure, [
+      reference('ephedrine-hypotension','Значимая гипотензия во время анестезии · AKOVAZ',
+        'По инструкции США начальный в/в болюс 5–10 мг. Титровать по артериальному давлению.',
+        'https://www.accessdata.fda.gov/drugsatfda_docs/label/2020/208289s005lbl.pdf')
+    ]),
+    drug('ondansetron','Ондансетрон','Профилактика тошноты и рвоты', [
+      reference('ondansetron-ponv','Профилактика послеоперационной тошноты и рвоты у взрослых',
+        'Инструкция США: 4 мг в/в, вводить не менее 30 секунд, предпочтительно за 2–5 минут. Учитывай риск удлинения QT.',
+        'https://dailymed.nlm.nih.gov/dailymed/getFile.cfm?setid=729d865f-d84a-495e-9456-4bceebb6e03f&type=pdf')
+    ])
+  ];
   function addInfusionCatalog(settings) {
-    if (settings.version === 3) return settings;
+    if (settings.version === 4) return settings;
     const drugs = structuredClone(settings.drugs);
-    for (const entry of entries) {
+    for (const entry of settings.version === 3 ? additions : [...entries, ...additions]) {
       const existing = drugs.find(drug => drug.id === entry.id);
       if (!existing && ['prop','fent','ket','roc'].includes(entry.id)) continue;
       if (!existing) {
@@ -78,7 +132,7 @@
       const ids = new Set(existing.doses.map(dose => dose.id));
       existing.doses.push(...structuredClone(entry.doses.filter(dose => !ids.has(dose.id))));
     }
-    return { ...settings, drugs, version: 3 };
+    return { ...settings, drugs, version: 4 };
   }
   globalThis.addInfusionCatalog = addInfusionCatalog;
 })();
