@@ -137,3 +137,7 @@ nav { margin-top: 12px; }
 .mixture-fields { display: grid; grid-template-columns: minmax(0,1fr) 68px minmax(0,1.2fr); gap: 6px; align-items: end; }
 .mixture-fields input, .mixture-fields select, .infusion-direction select { min-width: 0; padding-inline: 6px; }
 .direct-fields { grid-template-columns: minmax(0,1fr) 85px; }
+
+.drug-picker-trigger { width: 100%; text-align: left; }
+.drug-choices { display: grid; gap: 5px; max-height: min(40vh, 320px); overflow: auto; }
+.drug-choices button { text-align: left; }
