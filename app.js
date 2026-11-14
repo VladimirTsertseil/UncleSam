@@ -7,6 +7,7 @@
   const dialog = document.querySelector('#dialog');
   const status = document.querySelector('#status');
   const nav = document.querySelector('#nav');
+  const inhalation = AnesthesiaInhalation.create();
   const uid = () => globalThis.crypto?.randomUUID?.() || Date.now().toString(36) + Math.random().toString(36).slice(2);
   const clone = value => structuredClone(value);
   const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({
@@ -137,7 +138,8 @@
     const working = tab === 'calc' || tab === 'pump';
     main.innerHTML = working
       ? patientPanel() + renderCalc() + renderPatientReset()
-      : renderCatalog();
+      : tab === 'methods' ? inhalation.markup() + renderPatientReset() : renderCatalog();
+    inhalation.refresh(main);
     if (working) {
       for (const details of main.querySelectorAll('details[data-key]')) {
         if (opened.has(details.dataset.key)) details.open = true;
@@ -600,8 +602,15 @@
       moveCard(currentIndex() + (dx < 0 ? 1 : -1));
     }
   }, { passive: false });
+  main.addEventListener('click', event => {
+    if (tab === 'methods') inhalation.click(event, main);
+  });
   main.addEventListener('input', event => {
     const el = event.target;
+    if (tab === 'methods') {
+      inhalation.input(el);
+      return;
+    }
     if (el.tagName === 'SELECT' || el.type === 'file') return;
     const global = el.dataset.global;
     if (global === 'patientWeight') {
@@ -615,6 +624,10 @@
   });
   main.addEventListener('change', async event => {
     const el = event.target;
+    if (tab === 'methods') {
+      if (el.tagName === 'SELECT') inhalation.input(el);
+      return;
+    }
     if (el.id === 'file') {
       const file = el.files[0];
       el.value = '';
@@ -764,9 +777,9 @@
         break;
       }
       case 'new-patient':
-        if (dirty || patientWeight) {
+        if (dirty || patientWeight || inhalation.hasData()) {
           promptDialog('Начать новый расчёт?',
-            '<p class="subtle space">Масса пациента и правки текущего расчёта будут сброшены.</p>',
+            '<p class="subtle space">Данные пациента, текущие расчёты и журнал расхода будут сброшены.</p>',
             button('Начать расчёт','confirm-new-patient','','class="primary"'));
           break;
         }
@@ -774,8 +787,9 @@
       case 'confirm-new-patient':
         dialog.close();
         patientWeight = '';
+        inhalation.reset();
         loadPlan(draft.id);
-        main.querySelector('.shared-patient').scrollIntoView({ block: 'start' });
+        main.scrollIntoView({ block: 'start' });
         notify('Открыт новый расчёт.');
         break;
       case 'load-scenario': dialog.close(); loadPlan(value); break;
