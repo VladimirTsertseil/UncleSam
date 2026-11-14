@@ -142,11 +142,16 @@ nav { margin-top: 12px; }
 
 
 .infusion-card { border-radius: 16px; box-shadow: 0 2px 8px #0e302909; }
+.infusion-card .card-title { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .infusion-card h2 { line-height: 1.2; overflow-wrap: anywhere; }
-.infusion-card .dose-line { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-.infusion-card :is(input, select, .stepper button, .infusion-direction button) { height: 44px; }
-.infusion-direction { display: grid; grid-template-columns: minmax(0, 1fr) 44px; align-items: end; gap: 8px; }
-.infusion-direction button { padding: 0; font-size: 1.35rem; }
+.infusion-flip { flex: 0 0 44px; padding: 0; font-size: 1.35rem; }
+.infusion-card .dose-line { grid-template-columns: minmax(0, 1fr) minmax(135px, .85fr); gap: 6px; }
+.infusion-card .dose-line select {
+  appearance: none;
+  padding-inline: 7px 22px;
+  background: #fbfdfb url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m4 6 4 4 4-4' fill='none' stroke='%23142c26' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") right 5px center / 14px no-repeat;
+}
+.infusion-card :is(input, select, .stepper button) { height: 44px; }
 .infusion-preparation { display: grid; gap: 10px; border-top: 1px solid var(--border); padding-top: 12px; }
 .mixture-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; align-items: end; }
 .mixture-amount { display: grid; grid-template-columns: minmax(0, 1fr) 82px; gap: 6px; align-items: end; }
@@ -156,7 +161,6 @@ nav { margin-top: 12px; }
 .infusion-card .result:not(.has-value) strong { font-size: .95rem; font-weight: 600; }
 @media (max-width: 480px) {
   .app-title img { width: 32px; height: 32px; border-radius: 9px; }
-  .infusion-card .dose-line { grid-template-columns: minmax(0, 1fr); }
   .mixture-fields:not(.direct-fields) { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); }
 }
 @media (max-width: 340px) {

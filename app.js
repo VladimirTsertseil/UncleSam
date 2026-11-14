@@ -237,7 +237,7 @@
     const mixtures = infusion ? (drug?.mixtures ?? []).filter(m => dimension(m.unit) === dimension(units[row.unit].mass)) : [];
     const concentrations = (drug?.concentrations ?? []).filter(c => dimension(c.unit) === dimension(units[row.unit].mass));
     const doses = (drug?.doses ?? []).filter(d => !d.referenceOnly && units[d.unit].time === infusion && !row.reverse);
-    const doseLabel = row.reverse ? 'Скорость инфузомата, мл/ч' : 'Доза';
+    const doseLabel = row.reverse ? 'Скорость, мл/ч' : 'Доза';
     const quickConcentration = row.preparation === 'direct' && concentrations.length > 0
       ? select('Концентрация','savedConcentration',
         option('', 'Выбрать', '') +
@@ -252,7 +252,12 @@
     const arrows = `<button type="button" data-action="up" aria-label="Выше" ${index === 0 ? 'disabled' : ''}>↑</button>
       <button type="button" data-action="down" aria-label="Ниже" ${index === draft[stage].length-1 ? 'disabled' : ''}>↓</button>`;
     return `<article class="row${infusion ? ' infusion-card' : ''}" data-stage="${stage}" data-index="${index}" aria-label="${esc(drug?.name || row.label || 'Строка расчёта')}">
-      <h2>${esc(drug?.name || row.label || 'Выбор препарата')}</h2>
+      <div class="card-title">
+        <h2>${esc(drug?.name || row.label || 'Выбор препарата')}</h2>
+        ${infusion ? button('⇄','flip-infusion','',row.reverse
+          ? 'class="infusion-flip" aria-label="Ввод дозы" title="Ввод дозы"'
+          : 'class="infusion-flip" aria-label="Ввод скорости в мл/ч" title="Ввод скорости в мл/ч"') : ''}
+      </div>
       ${!drug && !row.label ? `<div class="space">${drugPicker}</div>` : ''}
       <div class="dose-line space">
         <div>
@@ -263,12 +268,7 @@
             <button type="button" data-action="step-dose" value="1" aria-label="${row.reverse ? 'Увеличить скорость' : 'Увеличить дозу'}">+</button>
           </div>
         </div>
-        <div class="${infusion ? 'infusion-direction' : ''}">
-          ${select(infusion ? 'Единица дозы' : 'Единица','unit',unitOptions(row.unit, infusion))}
-          ${infusion ? button('⇄','flip-infusion','',row.reverse
-            ? 'aria-label="Ввод дозы" title="Ввод дозы"'
-            : 'aria-label="Ввод скорости в мл/ч" title="Ввод скорости в мл/ч"') : ''}
-        </div>
+        ${select(infusion ? 'Единица дозы' : 'Единица','unit',unitOptions(row.unit, infusion))}
       </div>
       ${showWeight ? `<div class="space">${input('Расчётная масса, кг','weight',row.weight,numeric)}
         ${row.note ? `<p class="subtle">${esc(row.note)}</p>` : ''}</div>` : ''}
