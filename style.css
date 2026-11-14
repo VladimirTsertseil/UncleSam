@@ -181,6 +181,12 @@ nav { margin-top: 12px; }
 .epidural-checkbox { display: flex; gap: 8px; align-items: center; min-height: 44px; }
 .epidural-checkbox input { width: 1.2rem; min-height: 0; height: 1.2rem; margin: 0; accent-color: var(--accent); }
 [data-epidural] .result :is(strong, small) { overflow-wrap: anywhere; }
+.block-card .result :is(strong, small), [data-block-root] .gas-journal { overflow-wrap: anywhere; }
+.block-entry { display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr) auto; align-items: end; }
+.block-remove { width: 44px; padding: 0; font-size: 1.35rem; }
+@media (max-width: 360px) {
+  .block-entry { grid-template-columns: 1fr; }
+}
 @media (max-width: 480px) {
   .top nav { gap: 0; }
   .top nav button { flex: 1 1 auto; min-width: 0; padding-inline: 4px; font-size: .875rem; }
