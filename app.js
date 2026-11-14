@@ -8,6 +8,7 @@
   const status = document.querySelector('#status');
   const nav = document.querySelector('#nav');
   const inhalation = AnesthesiaInhalation.create();
+  const epidural = AnesthesiaEpidural.create();
   const uid = () => globalThis.crypto?.randomUUID?.() || Date.now().toString(36) + Math.random().toString(36).slice(2);
   const clone = value => structuredClone(value);
   const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({
@@ -143,6 +144,7 @@
       ? patientPanel() + renderCalc() + renderPatientReset()
       : tab === 'methods' ? renderMethods() + renderPatientReset() : renderCatalog();
     inhalation.refresh(main);
+    epidural.refresh(main);
     if (tab === 'methods' && selectedMethod === 'spinal') updateSpinal();
     if (working) {
       for (const details of main.querySelectorAll('details[data-key]')) {
@@ -179,8 +181,12 @@
   }
   function renderMethods() {
     const choices = option('gas','Ингаляционная анестезия',selectedMethod) +
-      option('spinal','Спинальная анестезия',selectedMethod);
-    return select('Метод','method',choices,'methods') + (selectedMethod === 'gas' ? inhalation.markup() : `
+      option('spinal','Спинальная анестезия',selectedMethod) +
+      option('epidural','Эпидуральная анестезия',selectedMethod);
+    const picker = select('Метод','method',choices,'methods');
+    if (selectedMethod === 'gas') return picker + inhalation.markup();
+    if (selectedMethod === 'epidural') return picker + epidural.markup();
+    return picker + `
       <section class="panel space gas-method">
         <h2>Бупивакаин</h2>
         <p class="subtle space">Используй концентрацию с упаковки формы для интратекального введения.</p>
@@ -195,7 +201,7 @@
             'amount',spinal.amount,numeric,'spinal')}
         </div>
         <div class="result"><strong data-spinal-result role="status"></strong></div>
-      </section>`);
+      </section>`;
   }
   function updateSpinal() {
     const concentration = number(spinal.concentration);
@@ -639,12 +645,16 @@
     }
   }, { passive: false });
   main.addEventListener('click', event => {
-    if (tab === 'methods') inhalation.click(event, main);
+    if (tab !== 'methods') return;
+    if (selectedMethod === 'gas') inhalation.click(event, main);
+    if (selectedMethod === 'epidural') epidural.click(event, main);
   });
   main.addEventListener('input', event => {
     const el = event.target;
     if (tab === 'methods') {
-      if (el.dataset.spinal && el.tagName === 'INPUT') {
+      if (selectedMethod === 'epidural' && el.tagName === 'INPUT' && el.type !== 'checkbox') {
+        epidural.input(el, main);
+      } else if (el.dataset.spinal && el.tagName === 'INPUT') {
         spinal[el.dataset.spinal] = el.value;
         updateSpinal();
       } else if (selectedMethod === 'gas') inhalation.input(el);
@@ -668,6 +678,8 @@
         selectedMethod = el.value;
         render();
         main.querySelector('[data-methods="method"]').focus({ preventScroll: true });
+      } else if (selectedMethod === 'epidural' && (el.tagName === 'SELECT' || el.type === 'checkbox')) {
+        epidural.input(el, main);
       } else if (el.dataset.spinal && el.tagName === 'SELECT') {
         spinal[el.dataset.spinal] = el.value;
         if (el.dataset.spinal === 'direction') spinal.amount = '';
@@ -825,7 +837,7 @@
         break;
       }
       case 'new-patient':
-        if (dirty || patientWeight || inhalation.hasData() || spinal.concentration || spinal.amount || spinal.baricity) {
+        if (dirty || patientWeight || inhalation.hasData() || epidural.hasData() || spinal.concentration || spinal.amount || spinal.baricity) {
           promptDialog('Начать новый расчёт?',
             '<p class="subtle space">Данные пациента, текущие расчёты и журнал расхода будут сброшены.</p>',
             button('Начать расчёт','confirm-new-patient','','class="primary"'));
@@ -836,6 +848,7 @@
         dialog.close();
         patientWeight = '';
         inhalation.reset();
+        epidural.reset();
         spinal = { ...spinalDefaults };
         loadPlan(draft.id);
         main.scrollIntoView({ block: 'start' });

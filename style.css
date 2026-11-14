@@ -176,6 +176,11 @@ nav { margin-top: 12px; }
 .gas-journal { padding: 0; list-style: none; }
 .gas-journal li { border-top: 1px solid var(--border); padding-block: 8px; }
 .gas-journal small { display: block; color: var(--muted); }
+.epidural-fields { min-inline-size: 0; margin: 0; border: 0; padding: 0; }
+.epidural-fields legend { padding: 0; }
+.epidural-checkbox { display: flex; gap: 8px; align-items: center; min-height: 44px; }
+.epidural-checkbox input { width: 1.2rem; min-height: 0; height: 1.2rem; margin: 0; accent-color: var(--accent); }
+[data-epidural] .result :is(strong, small) { overflow-wrap: anywhere; }
 @media (max-width: 480px) {
   .top nav { gap: 0; }
   .top nav button { flex: 1 1 auto; min-width: 0; padding-inline: 4px; font-size: .875rem; }
