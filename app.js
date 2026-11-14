@@ -227,8 +227,8 @@
     const weightBased = units[row.unit].weight;
     const key = stage + '-' + index;
     const weightLabel = row.weightRequired ? 'Расчётная масса, кг · требуется' : 'Расчётная масса, кг · по желанию';
-    const drugOptions = option('', 'Выбрать препарат', row.drug || '') +
-      database.drugs.map(d => option(d.id, d.name, row.drug)).join('');
+    const drugPicker = button(drug?.name || 'Выбрать препарат','open-drug-picker','',
+      'class="drug-picker-trigger" aria-haspopup="dialog"');
     const mixtures = infusion ? (drug?.mixtures ?? []).filter(m => dimension(m.unit) === dimension(units[row.unit].mass)) : [];
     const concentrations = (drug?.concentrations ?? []).filter(c => dimension(c.unit) === dimension(units[row.unit].mass));
     const doses = (drug?.doses ?? []).filter(d => !d.referenceOnly && units[d.unit].time === infusion && !row.reverse);
@@ -248,7 +248,7 @@
       <button type="button" data-action="down" aria-label="Ниже" ${index === draft[stage].length-1 ? 'disabled' : ''}>↓</button>`;
     return `<article class="row" data-stage="${stage}" data-index="${index}" aria-label="${esc(drug?.name || row.label || 'Строка расчёта')}">
       <h2>${esc(drug?.name || row.label || 'Выбор препарата')}</h2>
-      ${!drug && !row.label ? `<div class="space">${select('Препарат','drug',drugOptions)}</div>` : ''}
+      ${!drug && !row.label ? `<div class="space">${drugPicker}</div>` : ''}
       <div class="dose-line space">
         <div>
           <label for="card-dose">${infusion && !row.reverse ? 'Доза' : doseLabel}</label>
@@ -291,7 +291,7 @@
         <summary>Настроить карточку</summary>
         <div class="grid">
         ${!infusion ? select('Приготовление раствора','preparation',preparationOptions) : ''}
-        ${drug || row.label ? select('Препарат','drug',drugOptions) : ''}
+        ${drug || row.label ? drugPicker : ''}
         ${stage === 'maintenance' ? select('Введение','kind',option('bolus','Болюс',infusion ? 'infusion' : 'bolus') + option('infusion','Инфузия',infusion ? 'infusion' : 'bolus')) : ''}
         ${!infusion || quickConcentration ? select(concentrationName,'cUnit',concentrationUnits) : ''}
         ${!infusion && row.preparation === 'mix' ? input('Количество препарата','quantity',row.quantity,numeric) +
@@ -480,24 +480,35 @@
     const container = el.closest('[data-stage]');
     return container ? draft[container.dataset.stage][Number(container.dataset.index)] : null;
   }
+  function chooseDrug(row, id) {
+    if (row.drug === id) return;
+    const previous = { weightRequired: row.weightRequired };
+    const dose = units[row.unit].time && drugFor(id)?.doses.find(d => !d.referenceOnly && units[d.unit].time);
+    const next = blank(id || null, dose ? dose.unit : row.unit);
+    if (units[next.unit].time) {
+      const family = dimension(units[next.unit].mass);
+      if (!drugFor(id)?.concentrations.some(c => dimension(c.unit) === family)) {
+        next.preparation = 'mix';
+        next.cUnit = family === 'ммоль' ? 'ммоль' : 'мг';
+      }
+    }
+    Object.assign(row, next, previous);
+    dirty = true;
+    render(true);
+  }
+  function renderDrugChoices(query = '') {
+    const normalize = value => value.toLocaleLowerCase('ru').replaceAll('ё','е').trim();
+    const names = database.drugs.filter(drug => normalize(drug.name).includes(normalize(query)));
+    dialog.querySelector('#drug-choices').innerHTML = names.length
+      ? names.map(drug => button(drug.name,'choose-drug',drug.id)).join('')
+      : '<p role="status" class="subtle">Препараты не найдены.</p>';
+  }
   function handleField(el) {
     const row = rowFrom(el);
     const field = el.dataset.field;
     if (!row || !field) return;
     dirty = true;
-    if (field === 'drug') {
-      const previous = { weightRequired: row.weightRequired };
-      const dose = units[row.unit].time && drugFor(el.value)?.doses.find(d => !d.referenceOnly && units[d.unit].time);
-      const next = blank(el.value || null, dose ? dose.unit : row.unit);
-      if (units[next.unit].time) {
-        const family = dimension(units[next.unit].mass);
-        if (!drugFor(el.value)?.concentrations.some(c => dimension(c.unit) === family)) {
-          next.preparation = 'mix';
-          next.cUnit = family === 'ммоль' ? 'ммоль' : 'мг';
-        }
-      }
-      Object.assign(row, next, previous);
-    } else if (field === 'weightRequired') {
+    if (field === 'weightRequired') {
       row.weightRequired = el.value === 'true';
     } else if (field === 'kind') {
       row.unit = units[row.unit].mass + (units[row.unit].weight ? '/кг' : '') + (el.value === 'infusion' ? '/ч' : '');
@@ -626,6 +637,10 @@
   });
   dialog.addEventListener('input', event => {
     const el = event.target;
+    if (el.id === 'drug-search') {
+      renderDrugChoices(el.value);
+      return;
+    }
     const field = el.dataset.editor;
     if (!field || !editingDrug) return;
     const group = el.closest('[data-editor-group]');
@@ -777,12 +792,26 @@
         if (committed === true) notify('Сценарий удалён.');
         break;
       }
+      case 'open-drug-picker': {
+        promptDialog('Выбрать препарат',
+          '<label class="space">Поиск по названию<input id="drug-search" type="search" autocomplete="off" autofocus></label><div id="drug-choices" class="drug-choices space"></div>', '');
+        renderDrugChoices();
+        dialog.querySelector('#drug-search').focus();
+        break;
+      }
+      case 'choose-drug': {
+        const selectedRow = cards()[currentIndex()]?.row;
+        if (!selectedRow || !drugFor(value)) break;
+        dialog.close();
+        chooseDrug(selectedRow,value);
+        break;
+      }
       case 'add-row':
         draft[value].push(blank(null, value === 'maintenance' ? 'мг/кг/ч' : 'мг/кг'));
         setCard(draft[value].length - 1);
         dirty = true;
         render(true);
-        main.querySelector(`[data-stage="${value}"]:last-of-type [data-field="drug"]`)?.focus();
+        main.querySelector(`[data-stage="${value}"]:last-of-type [data-action="open-drug-picker"]`)?.focus();
         break;
       case 'up':
       case 'down':
