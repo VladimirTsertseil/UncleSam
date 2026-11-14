@@ -178,18 +178,23 @@
     const maintenance = stage === 'maintenance';
     const card = deck[index];
     return `
-      ${maintenance ? '<h2 id="maintenance-heading">Поддержание</h2>' : ''}
-      <section class="deck" aria-label="Карточки препаратов" data-deck>
-        ${card ? `<div class="deck-header">
-          <button type="button" data-action="previous-card" aria-label="Предыдущий препарат" ${index === 0 ? 'disabled' : ''}>‹</button>
-          <p role="status"><span>${index+1} / ${deck.length}</span></p>
-          <button type="button" data-action="next-card" aria-label="Следующий препарат" ${index + 1 === deck.length ? 'disabled' : ''}>›</button>
-        </div>${renderRow(card.row, card.stage, card.index)}`
-          : `<div class="panel">${button('Добавить первый препарат','add-row',stage)}</div>`}
+      <section class="deck${maintenance ? ' infusion-deck' : ''}" aria-label="Карточки препаратов" data-deck>
+        ${card || maintenance ? `<div class="deck-toolbar">
+          ${card ? `<div class="deck-header">
+            <button type="button" data-action="previous-card" aria-label="Предыдущий препарат" ${index === 0 ? 'disabled' : ''}>‹</button>
+            <p role="status"><span>${index+1} / ${deck.length}</span></p>
+            <button type="button" data-action="next-card" aria-label="Следующий препарат" ${index + 1 === deck.length ? 'disabled' : ''}>›</button>
+          </div>` : ''}
+          ${maintenance ? `<div class="deck-tools">
+            ${button('+','add-row',stage,'aria-label="Добавить инфузию" title="Добавить инфузию"')}
+            ${card ? button('×','remove-row','','aria-label="Убрать текущую карточку" title="Убрать текущую карточку"') : ''}
+          </div>` : ''}
+        </div>` : ''}
+        ${card ? renderRow(card.row, card.stage, card.index)
+          : maintenance ? '' : `<div class="panel">${button('Добавить первый препарат','add-row',stage)}</div>`}
       </section>
       <div class="deck-actions">
         ${button('Итог','review','','class="primary"')}
-        ${maintenance ? button('Добавить инфузию','add-row','maintenance') : ''}
       </div>`;
   }
   function renderScenarioTools() {
@@ -306,7 +311,7 @@
         ${input('Примечание к строке','note',row.note)}
         ${!drug ? input('Название препарата вручную','label',row.label) : ''}
         </div>
-        <div class="actions space">${infusion && drug && row.preparation === 'mix' ? button('Сохранить разведение','save-row-mixture') : ''}${arrows}${button('Убрать','remove-row','','class="danger"')}</div>
+        <div class="actions space">${infusion && drug && row.preparation === 'mix' ? button('Сохранить разведение','save-row-mixture') : ''}${arrows}${stage === 'induction' ? button('Убрать','remove-row','','class="danger"') : ''}</div>
       </details>
     </article>`;
   }
@@ -817,19 +822,27 @@
         render(true);
         main.querySelector(`[data-stage="${value}"]:last-of-type [data-action="open-drug-picker"]`)?.focus();
         break;
-      case 'up':
-      case 'down':
       case 'remove-row': {
+        const rows = draft[currentStage()];
+        if (!rows[currentIndex()]) break;
+        rows.splice(currentIndex(), 1);
+        setCard(Math.max(0, Math.min(currentIndex(), rows.length - 1)));
+        dirty = true;
+        render(true);
+        if (!container) {
+          const action = rows.length ? 'remove-row' : 'add-row';
+          main.querySelector(`.deck-tools [data-action="${action}"]`)?.focus();
+        }
+        break;
+      }
+      case 'up':
+      case 'down': {
         const rows = draft[container.dataset.stage];
         const index = Number(container.dataset.index);
+        const offset = action === 'up' ? -1 : 1;
         rows.splice(index, 1);
-        if (action === 'remove-row') {
-          setCard(Math.max(0, Math.min(currentIndex(), cards().length - 1)));
-        } else {
-          const offset = action === 'up' ? -1 : 1;
-          rows.splice(index + offset, 0, row);
-          setCard(currentIndex() + offset);
-        }
+        rows.splice(index + offset, 0, row);
+        setCard(index + offset);
         dirty = true;
         render(true);
         break;
