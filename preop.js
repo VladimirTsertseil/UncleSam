@@ -22,7 +22,7 @@
     function load() {
       if (archive || loading) return;
       failure = false;
-      loading = fetch('./preop-drugs-2026.json?v=1')
+      loading = fetch('./preop-drugs-2026.json?v=2')
         .then(response => {
           if (!response.ok) throw Error('Database unavailable');
           return response.json();
@@ -115,9 +115,7 @@
         ${operation.details ? `<p class="space">${escape(operation.details)}</p>` : ''}
         ${showRegional ? paragraph('Спинальная и эпидуральная анестезия', regional.spinal_epidural) +
           paragraph('Глубокая периферическая блокада', regional.deep_peripheral_block) +
-          paragraph('Поверхностная периферическая блокада',
-            drug.id === 'drug_176' || drug.id === 'drug_177'
-              ? '' : regional.superficial_peripheral_block) : ''}
+          paragraph('Поверхностная периферическая блокада', regional.superficial_peripheral_block) : ''}
         ${paragraph('Что проверить', drug.preoperative_checks)}
         ${paragraph('Возобновление', drug.resume)}
         <h3>Источники для сверки</h3>
