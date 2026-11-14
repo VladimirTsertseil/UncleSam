@@ -232,7 +232,7 @@
     const mixtures = infusion ? (drug?.mixtures ?? []).filter(m => dimension(m.unit) === dimension(units[row.unit].mass)) : [];
     const concentrations = (drug?.concentrations ?? []).filter(c => dimension(c.unit) === dimension(units[row.unit].mass));
     const doses = (drug?.doses ?? []).filter(d => !d.referenceOnly && units[d.unit].time === infusion && !row.reverse);
-    const doseLabel = row.reverse ? 'Скорость насоса, мл/ч' : infusion ? 'Скорость инфузии' : 'Доза';
+    const doseLabel = row.reverse ? 'Скорость инфузомата, мл/ч' : 'Доза';
     const quickConcentration = row.preparation === 'direct' && concentrations.length > 0
       ? select('Концентрация','savedConcentration',
         option('', 'Выбрать', '') +
@@ -246,20 +246,20 @@
     const concentrationName = row.preparation === 'mix' ? 'Единица количества' : 'Единица концентрации';
     const arrows = `<button type="button" data-action="up" aria-label="Выше" ${index === 0 ? 'disabled' : ''}>↑</button>
       <button type="button" data-action="down" aria-label="Ниже" ${index === draft[stage].length-1 ? 'disabled' : ''}>↓</button>`;
-    return `<article class="row" data-stage="${stage}" data-index="${index}" aria-label="${esc(drug?.name || row.label || 'Строка расчёта')}">
+    return `<article class="row${infusion ? ' infusion-card' : ''}" data-stage="${stage}" data-index="${index}" aria-label="${esc(drug?.name || row.label || 'Строка расчёта')}">
       <h2>${esc(drug?.name || row.label || 'Выбор препарата')}</h2>
       ${!drug && !row.label ? `<div class="space">${drugPicker}</div>` : ''}
       <div class="dose-line space">
         <div>
-          <label for="card-dose">${infusion && !row.reverse ? 'Доза' : doseLabel}</label>
+          <label for="card-dose">${doseLabel}</label>
           <div class="stepper">
-            <button type="button" data-action="step-dose" value="-1" aria-label="Уменьшить дозу">−</button>
+            <button type="button" data-action="step-dose" value="-1" aria-label="${row.reverse ? 'Уменьшить скорость' : 'Уменьшить дозу'}">−</button>
             <input id="card-dose" data-field="value" value="${esc(row.value)}"${numeric}>
-            <button type="button" data-action="step-dose" value="1" aria-label="Увеличить дозу">+</button>
+            <button type="button" data-action="step-dose" value="1" aria-label="${row.reverse ? 'Увеличить скорость' : 'Увеличить дозу'}">+</button>
           </div>
         </div>
         <div class="${infusion ? 'infusion-direction' : ''}">
-          ${select(row.reverse ? 'Единица результата' : 'Единица','unit',unitOptions(row.unit, infusion))}
+          ${select(infusion ? 'Единица дозы' : 'Единица','unit',unitOptions(row.unit, infusion))}
           ${infusion ? button('⇄','flip-infusion','',row.reverse
             ? 'aria-label="Ввод дозы" title="Ввод дозы"'
             : 'aria-label="Ввод скорости в мл/ч" title="Ввод скорости в мл/ч"') : ''}
@@ -270,8 +270,10 @@
       ${infusion ? `<div class="infusion-preparation space">
         ${select('Разведение','preparation',preparationOptions)}
         ${row.preparation === 'mix' ? `<div class="mixture-fields">
-          ${input('Количество','quantity',row.quantity,numeric)}
-          ${select('Единица','cUnit',concentrationUnits)}
+          <div class="mixture-amount">
+            ${input('Количество','quantity',row.quantity,numeric)}
+            ${select('Единица','cUnit',concentrationUnits)}
+          </div>
           ${input('Итоговый объём, мл','volume',row.volume,numeric)}
         </div>` : quickConcentration || `<div class="mixture-fields direct-fields">
           ${input('Концентрация, ' + row.cUnit + '/мл','concentration',row.concentration,numeric)}
@@ -349,7 +351,9 @@
       const result = describe(row);
       const current = number(row.value);
       const step = doseStep(row);
-      article.querySelector('[data-answer]').textContent = result.answer;
+      const answer = article.querySelector('[data-answer]');
+      answer.textContent = result.answer;
+      answer.parentElement.classList.toggle('has-value', Boolean(result.ready));
       article.querySelector('[data-math]').textContent = result.context;
       article.querySelector('[data-math]').hidden = !result.ready || !calculate(row, patientWeight).rawConcentration;
       article.querySelector('[data-action="step-dose"][value="-1"]').disabled = !current || current <= step;

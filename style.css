@@ -68,6 +68,9 @@ dialog::backdrop { background: #0e30297f; }
 }
 .top { padding-top: clamp(16px, 4vw, 30px); }
 h1 { font-size: clamp(1.5rem, 4.5vw, 2.6rem); }
+.app-title { display: flex; align-items: center; gap: 10px; }
+.app-title img { flex: none; border-radius: 11px; }
+.app-title h1 { min-width: 0; }
 nav { margin-top: 12px; }
 .patient-panel .grid { margin-top: 0; }
 .deck { touch-action: pan-y pinch-zoom; margin-block: 15px 12px; }
@@ -131,12 +134,27 @@ nav { margin-top: 12px; }
 .patient-reset { display: flex; justify-content: flex-end; margin: 16px 0; }
 
 
-.infusion-direction { display: grid; grid-template-columns: minmax(0, 1fr) 44px; align-items: end; gap: 6px; }
-.infusion-direction button { padding: 0; font-size: 1.25rem; }
-.infusion-preparation { display: grid; gap: 8px; }
-.mixture-fields { display: grid; grid-template-columns: minmax(0,1fr) 68px minmax(0,1.2fr); gap: 6px; align-items: end; }
-.mixture-fields input, .mixture-fields select, .infusion-direction select { min-width: 0; padding-inline: 6px; }
-.direct-fields { grid-template-columns: minmax(0,1fr) 85px; }
+.infusion-card { border-radius: 16px; box-shadow: 0 2px 8px #0e302909; }
+.infusion-card h2 { line-height: 1.2; overflow-wrap: anywhere; }
+.infusion-card .dose-line { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.infusion-card :is(input, select, .stepper button, .infusion-direction button) { height: 44px; }
+.infusion-direction { display: grid; grid-template-columns: minmax(0, 1fr) 44px; align-items: end; gap: 8px; }
+.infusion-direction button { padding: 0; font-size: 1.35rem; }
+.infusion-preparation { display: grid; gap: 10px; border-top: 1px solid var(--border); padding-top: 12px; }
+.mixture-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; align-items: end; }
+.mixture-amount { display: grid; grid-template-columns: minmax(0, 1fr) 82px; gap: 6px; align-items: end; }
+.direct-fields { grid-template-columns: minmax(0, 1fr) 100px; }
+.mixture-fields :is(input, select) { min-width: 0; padding-inline: 7px; }
+.infusion-card .result:not(.has-value) { background: #f0f4f1; color: var(--muted); }
+.infusion-card .result:not(.has-value) strong { font-size: .95rem; font-weight: 600; }
+@media (max-width: 480px) {
+  .app-title img { width: 32px; height: 32px; border-radius: 9px; }
+  .infusion-card .dose-line { grid-template-columns: minmax(0, 1fr); }
+  .mixture-fields:not(.direct-fields) { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); }
+}
+@media (max-width: 340px) {
+  .mixture-fields:not(.direct-fields) { grid-template-columns: minmax(0, 1fr); }
+}
 
 .drug-picker-trigger { width: 100%; text-align: left; }
 .drug-choices { display: grid; gap: 5px; max-height: min(40vh, 320px); overflow: auto; }
