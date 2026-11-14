@@ -5,6 +5,13 @@
   const escape = value => String(value ?? '').replace(/[&<>"']/g, char =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
   const collator = new Intl.Collator('ru');
+  // Cards with procedure-specific guidance in sections 5.1–5.6 of FAR 2025.
+  const regionalCardIds = new Set([
+    'drug_043', 'drug_044', 'drug_045', 'drug_046', 'drug_047', // Aspirin, P2Y12 inhibitors, warfarin
+    'drug_048', 'drug_049', 'drug_050', 'drug_051', // Direct oral anticoagulants
+    'drug_052', 'drug_053', 'drug_054', 'drug_055', 'drug_056', 'drug_057', // Heparins and fondaparinux
+    'drug_176', 'drug_177' // Aspirin and clopidogrel combinations
+  ]);
   function create(dialog) {
     let query = '';
     let archive;
@@ -92,6 +99,7 @@
       const drug = archive?.drugs.get(id);
       if (!drug || dialog.open) return;
       const { operation, regional_anesthesia: regional } = drug;
+      const showRegional = regionalCardIds.has(drug.id) && drug.references.includes('FAR_ANTICOAG_2025');
       const sources = drug.references.map(key => archive.sources[key]).filter(Boolean)
         .map(s => `<li>${sourceLink(s.url, s.title)}<small>${escape(s.type)}</small></li>`).join('');
       const brands = sourceLink(drug.brand_source_url, 'Торговые названия и состав');
@@ -101,16 +109,15 @@
         <p class="subtle">${escape(drug.group)} · ${escape(drug.subgroup)}</p>
         ${paragraph('Действующие вещества', drug.ingredients_ru.join(' + '))}
         ${paragraph('Торговые названия', drug.trade_names_ru.join(', '))}
-        <p class="preop-evidence"><b>Основание по данным базы:</b>
-          ${escape(drug.evidence_status.replaceAll('_', ' '))}.
-          Сверь интервалы и условия с источником перед назначением.</p>
         ${drug.high_risk_flags ? `<aside class="preop-evidence">${paragraph('Особые риски', drug.high_risk_flags)}</aside>` : ''}
         ${paragraph('Перед операцией', operation.decision)}
         ${paragraph('Срок отмены', operation.hold_interval)}
         ${operation.details ? `<p class="space">${escape(operation.details)}</p>` : ''}
-        ${paragraph('Спинальная и эпидуральная анестезия', regional.spinal_epidural)}
-        ${paragraph('Глубокая периферическая блокада', regional.deep_peripheral_block)}
-        ${paragraph('Поверхностная периферическая блокада', regional.superficial_peripheral_block)}
+        ${showRegional ? paragraph('Спинальная и эпидуральная анестезия', regional.spinal_epidural) +
+          paragraph('Глубокая периферическая блокада', regional.deep_peripheral_block) +
+          paragraph('Поверхностная периферическая блокада',
+            drug.id === 'drug_176' || drug.id === 'drug_177'
+              ? '' : regional.superficial_peripheral_block) : ''}
         ${paragraph('Что проверить', drug.preoperative_checks)}
         ${paragraph('Возобновление', drug.resume)}
         <h3>Источники для сверки</h3>
