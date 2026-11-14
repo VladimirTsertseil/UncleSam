@@ -51,7 +51,10 @@
     const decimal = value => string(value) && (!value.trim() || number(value) !== null);
     const mass = value => ['мг','мкг'].includes(value);
     const list = (items, test) => Array.isArray(items) && items.every(test);
-    if (![1, 2].includes(data?.version) || !list(data.drugs, drug => named(drug) &&
+    if (![1, 2, 3].includes(data?.version) || !list(data.drugs, drug => named(drug) &&
+      (drug.group === undefined || string(drug.group)) &&
+      (drug.mixtures === undefined || list(drug.mixtures, m => m && string(m.quantity) && number(m.quantity) &&
+        mass(m.unit) && string(m.volume) && number(m.volume))) &&
       list(drug.concentrations, c => c && number(c.value) && string(c.value) && mass(c.unit)) &&
       list(drug.doses, d => named(d) && decimal(d.value) && isUnit(d.unit) &&
         string(d.note) && string(d.source) && (!d.source || url(d.source))) && unique(drug.doses)) ||
@@ -69,11 +72,12 @@
       !unique(data.scenarios)) throw Error('Некорректные сценарии.');
     return data;
   }
-  let database = fresh();
+  const migrate = data => addInfusionCatalog(data.version === 3 ? data : upgrade(data));
+  let database = addInfusionCatalog(fresh());
   let startupMessage = '';
   try {
     const saved = localStorage.getItem(storageKey);
-    if (saved) database = upgrade(validate(JSON.parse(saved)));
+    if (saved) database = migrate(validate(JSON.parse(saved)));
   } catch {
     startupMessage = 'Не удалось загрузить настройки браузера. Открыты стартовые шаблоны.';
   }
@@ -83,6 +87,17 @@
   let tab = 'calc';
   let dirty = false;
   let activeCard = 0;
+  let infusionView = 'calculator';
+  let infusionCard = 0;
+  const infusionDrugs = () => database.drugs.filter(drug =>
+    drug.id !== 'eto' || drug.doses.some(dose => units[dose.unit]?.time));
+  const defaultPumpDrug = () => infusionDrugs().find(drug => drug.id === 'nor')?.id ?? infusionDrugs()[0]?.id;
+  let pump = newPump(defaultPumpDrug());
+  function newPump(id) {
+    const drug = infusionDrugs().find(item => item.id === id);
+    const unit = drug?.doses.find(dose => units[dose.unit]?.time)?.unit || 'мкг/кг/мин';
+    return { ...blank(drug?.id ?? null, unit), preparation: 'mix', cUnit: 'мг', reverse: true };
+  }
   let touchStart;
   let editingDrug;
   let pendingImport;
@@ -129,28 +144,44 @@
       if (el.dataset.tab === tab) el.setAttribute('aria-current', 'page');
       else el.removeAttribute('aria-current');
     }
-    main.innerHTML = tab === 'calc' ? renderCalc() : tab === 'drugs' ? renderCatalog() : renderSettings();
-    if (tab === 'calc') {
+    const showCards = tab === 'calc' || (tab === 'pump' && infusionView === 'maintenance');
+    main.innerHTML = showCards ? renderCalc() : tab === 'pump' ? renderPump()
+      : tab === 'drugs' ? renderCatalog() : renderSettings();
+    if (showCards || tab === 'pump') {
       for (const details of main.querySelectorAll('details[data-key]')) {
         if (opened.has(details.dataset.key)) details.open = true;
       }
-      updateResults();
+      if (showCards) updateResults();
+      else updatePump();
     }
   }
-  const cards = () => Object.keys(stages).flatMap(stage =>
-    draft[stage].map((row, index) => ({ row, stage, index }))
-  );
+  const currentStage = () => tab === 'pump' ? 'maintenance' : 'induction';
+  const currentIndex = () => tab === 'pump' ? infusionCard : activeCard;
+  function setCard(index) {
+    if (tab === 'pump') infusionCard = index;
+    else activeCard = index;
+  }
+  const cards = () => draft[currentStage()].map((row, index) => ({ row, stage:currentStage(), index }));
   function moveCard(index) {
-    if (index < 0 || index >= cards().length || index === activeCard) return;
-    activeCard = index;
+    if (index < 0 || index >= cards().length || index === currentIndex()) return;
+    setCard(index);
     render();
+  }
+  function pumpTabs() {
+    return `<div class="pump-tabs" aria-label="Разделы инфузий">
+      ${button('Инфузомат','infusion-view','calculator',`aria-pressed="${infusionView === 'calculator'}"`)}
+      ${button('Поддержание','infusion-view','maintenance',`aria-pressed="${infusionView === 'maintenance'}"`)}
+    </div>`;
   }
   function renderCalc() {
     const scenarioOptions = option('', 'Новый сценарий', draft.id) + database.scenarios
       .map(scenario => option(scenario.id, scenario.name, draft.id)).join('');
     const deck = cards();
-    const card = deck[activeCard];
-    return `<section class="panel patient-panel" aria-label="Пациент и сценарий">
+    const index = currentIndex();
+    const stage = currentStage();
+    const maintenance = stage === 'maintenance';
+    const card = deck[index];
+    return (maintenance ? pumpTabs() : '') + `<section class="panel patient-panel" aria-label="Пациент и сценарий">
       <div class="grid weight-grid">
       ${select('Сценарий','scenario',scenarioOptions,'global')}
       ${input('Масса, кг','patientWeight',patientWeight,numeric,'global')}
@@ -158,11 +189,11 @@
       </section>
       <section class="deck" aria-label="Карточки препаратов" data-deck>
         ${card ? `<div class="deck-header">
-          <button type="button" data-action="previous-card" aria-label="Предыдущий препарат" ${activeCard === 0 ? 'disabled' : ''}>‹</button>
-          <p role="status">${stages[card.stage]} <span>· ${activeCard+1} / ${deck.length}</span></p>
-          <button type="button" data-action="next-card" aria-label="Следующий препарат" ${activeCard + 1 === deck.length ? 'disabled' : ''}>›</button>
+          <button type="button" data-action="previous-card" aria-label="Предыдущий препарат" ${index === 0 ? 'disabled' : ''}>‹</button>
+          <p role="status">${stages[card.stage]} <span>· ${index+1} / ${deck.length}</span></p>
+          <button type="button" data-action="next-card" aria-label="Следующий препарат" ${index + 1 === deck.length ? 'disabled' : ''}>›</button>
         </div>${renderRow(card.row, card.stage, card.index)}`
-          : `<div class="panel">${button('Добавить первый препарат','add-row','induction')}</div>`}
+          : `<div class="panel">${button('Добавить первый препарат','add-row',stage)}</div>`}
       </section>
       <div class="deck-actions">
         ${button('Итог','review','','class="primary"')}
@@ -172,10 +203,9 @@
         ${draft.note ? `<p class="subtle">${esc(draft.note)} ${link(draft.source)}</p>` : ''}
         <div class="grid">${input('Название','name',draft.name,' maxlength="120"','global')}
         ${input('Описание','note',draft.note,' maxlength="1000"','global')}</div>
-        ${renderMethod()}
+        ${maintenance ? renderMethod() : ''}
         <div class="actions space">
-          ${button('Добавить препарат на индукцию','add-row','induction')}
-          ${button('Добавить препарат на поддержание','add-row','maintenance')}
+          ${button('Добавить препарат','add-row',stage)}
           ${button('Сохранить как сценарий','save-as')}
           ${draft.id ? button('Обновить сценарий','save-scenario') : ''}
           ${draft.id ? button('Удалить сценарий','delete-scenario','','class="danger"') : ''}
@@ -321,7 +351,7 @@
     return row.unit.endsWith('/мин') ? 0.1 : 1;
   }
   function review() {
-    const content = Object.keys(stages).map(stage => {
+    const content = [currentStage()].map(stage => {
       const rows = draft[stage];
       const method = stage === 'maintenance' && draft.method !== 'none'
         ? `<p class="subtle">${esc(methods[draft.method])}${draft.method === 'gas' && draft.gas ? ' · ' + esc(draft.gas) : ''}</p>` : '';
@@ -330,10 +360,10 @@
         ${rows.map((row, index) => {
           const result = describe(row);
           const name = drugFor(row.drug)?.name || row.label || 'Препарат не выбран';
-          const position = index + (stage === 'maintenance' ? draft.induction.length : 0);
+
           return `<div class="review-row"><b>${esc(name)}</b><strong>${esc(result.answer)}</strong>
             <small>${esc(result.context)}</small>
-            ${button('Открыть карточку','review-card',String(position))}</div>`;
+            ${button('Открыть карточку','review-card',String(index))}</div>`;
         }).join('')}</section>`;
     }).join('');
     dialog.innerHTML = `<div class="bar"><h2 id="dialog-title">Итог</h2>${button('К расчёту','close')}</div>
@@ -342,6 +372,133 @@
       <p class="subtle space">Сверь дозы, расчётную массу и фактическую концентрацию перед введением.</p>`;
     dialog.setAttribute('aria-labelledby','dialog-title');
     dialog.showModal();
+  }
+  const inputNumberFormat = new Intl.NumberFormat('ru-RU', { useGrouping:false, maximumSignificantDigits: 15 });
+  const decimalInput = value => Number.isFinite(value) && value > 0 ? inputNumberFormat.format(value) : '';
+  function pumpStep() {
+    if (pump.reverse) return 0.1;
+    if (pump.unit === 'мкг/кг/мин' || pump.unit === 'мг/кг/мин') return 0.01;
+    return 0.1;
+  }
+  function pumpNumber(label, field, value) {
+    return `<div class="pump-field">
+      <label for="pump-${field}">${esc(label)}</label>
+      <div class="stepper">
+        <button type="button" data-action="pump-step" data-step-field="${field}" value="-1" aria-label="${esc(label)} · уменьшить">−</button>
+        <input id="pump-${field}" data-pump="${field}" value="${esc(value)}"${numeric}>
+        <button type="button" data-action="pump-step" data-step-field="${field}" value="1" aria-label="${esc(label)} · увеличить">+</button>
+      </div>
+    </div>`;
+  }
+  function renderPump() {
+    const drug = drugFor(pump.drug);
+    const groups = new Map();
+    for (const item of infusionDrugs()) {
+      const group = item.group || 'Другие препараты';
+      if (!groups.has(group)) groups.set(group, []);
+      groups.get(group).push(item);
+    }
+    const drugOptions = [...groups].map(([group, items]) =>
+      `<optgroup label="${esc(group)}">${items.map(item => option(item.id,item.name,pump.drug)).join('')}</optgroup>`
+    ).join('');
+    if (!drug) return pumpTabs() + `<section class="panel"><p>Добавь препарат в справочник.</p></section>`;
+    const doses = drug.doses.filter(dose => units[dose.unit].time);
+    const references = doses.map(dose => `<div class="reference"><p><b>${esc(dose.name)}</b></p>
+      <p class="subtle">${esc(dose.note || (dose.value ? dose.value + ' ' + dose.unit : ''))} ${link(dose.source)}</p>
+      ${button(dose.value ? 'Подставить ' + dose.value + ' ' + dose.unit : 'Ввести дозу в ' + dose.unit,'pump-reference',dose.id)}</div>`).join('');
+    const mixtures = (drug.mixtures || []).map((m,i) => option('m'+i,m.quantity+' '+m.unit+' / '+m.volume+' мл',''));
+    const concentrations = drug.concentrations.map((c,i) => option('c'+i,c.value+' '+c.unit+'/мл',''));
+    const prep = pump.preparation === 'mix';
+    const doseBlock = `<section class="panel pump-panel"><div class="bar"><h3>Доза</h3>
+      ${!pump.reverse ? '<span class="pump-badge">Ввод</span>' : ''}</div><div class="pump-grid">
+      ${pump.reverse ? '<output data-pump-dose class="pump-result" aria-label="Рассчитанная доза">—</output>' : pumpNumber('Заданная доза','value',pump.value)}
+      ${select('Единицы','unit',unitOptions(pump.unit,true),'pump')}</div></section>`;
+    const rateBlock = `<section class="panel pump-panel"><div class="bar"><h3>Скорость инфузомата</h3>
+      ${pump.reverse ? '<span class="pump-badge">Ввод</span>' : ''}</div>
+      ${pump.reverse ? pumpNumber('Скорость, мл/ч','value',pump.value)
+        : '<p class="pump-result"><output data-pump-rate aria-label="Рассчитанная скорость">—</output> <small>мл/ч</small></p>'}</section>`;
+    return pumpTabs() + `<div class="pump-shell">
+      <section class="panel pump-hero">
+        <h2>${esc(drug.name)}</h2>
+        <div class="pump-grid">
+          ${select('Препарат','drug',drugOptions,'pump')}
+          ${pumpNumber('Масса, кг','weight',patientWeight)}
+        </div>
+      </section>
+      <details class="panel pump-reference" data-key="pump-reference">
+        <summary>Справочные дозы ${doses.length ? '· '+doses.length : ''}</summary>
+        ${references || '<p class="subtle">Для этого препарата можно сохранить дозу во вкладке «Препараты».</p>'}
+      </details>
+      <section class="panel pump-panel">
+        <div class="bar"><h3>Разведение</h3>
+          ${select('Формат','preparation',option('mix','Количество / итоговый объём',pump.preparation) +
+            option('direct','Готовая концентрация',pump.preparation),'pump')}</div>
+        <div class="pump-grid">
+          ${prep ? pumpNumber('Количество препарата','quantity',pump.quantity) : pumpNumber('Концентрация на мл','concentration',pump.concentration)}
+          ${select('Единица','cUnit',massOptions(pump.cUnit),'pump')}
+          ${prep ? pumpNumber('Итоговый объём, мл','volume',pump.volume) : ''}
+        </div>
+        <p class="subtle" data-pump-concentration></p>
+        <details data-key="pump-mixtures"><summary>Сохранённые разведения и концентрации</summary>
+          ${mixtures.length || concentrations.length ? select('Подставить','preset',option('','Выбрать','')+mixtures.join('')+concentrations.join(''),'pump') : ''}
+          ${prep ? button('Сохранить разведение','pump-save-mixture') : '<p class="subtle">Концентрации можно сохранить во вкладке «Препараты».</p>'}
+        </details>
+      </section>
+      <div class="pump-direction">${button(pump.reverse ? 'Скорость → доза · переключить' : 'Доза → скорость · переключить','pump-direction')}</div>
+      ${pump.reverse ? rateBlock + doseBlock : doseBlock + rateBlock}
+      <p role="status" class="subtle pump-status" data-pump-status></p>
+    </div>`;
+  }
+  function updatePump() {
+    const status = main.querySelector('[data-pump-status]');
+    if (!status) return;
+    const unit = units[pump.unit];
+    const result = calculate(pump, patientWeight);
+    const answer = Number.isFinite(result.answer) && result.answer > 0 ? fmt(result.answer) : '—';
+    const dose = main.querySelector('[data-pump-dose]');
+    const rate = main.querySelector('[data-pump-rate]');
+    if (dose) dose.textContent = answer;
+    if (rate) rate.textContent = answer;
+    const c = Number.isFinite(result.concentration) && result.concentration > 0;
+    main.querySelector('[data-pump-concentration]').textContent = c
+      ? fmt(result.rawConcentration) + ' ' + pump.cUnit + '/мл' : '';
+    const written = [
+      !c ? 'Укажи разведение или концентрацию' : '',
+      unit.weight && !result.weight ? 'Укажи массу' : '',
+      !result.value ? (pump.reverse ? 'Укажи скорость' : 'Укажи дозу') : ''
+    ].filter(Boolean);
+    status.textContent = written.length ? written.join(' · ') : answer === '—' ? 'Значения вне диапазона расчёта' : '';
+    for (const el of main.querySelectorAll('input[data-pump]')) {
+      el.setAttribute('aria-invalid', String(Boolean(el.value.trim() && !number(el.value))));
+      const minus = el.previousElementSibling;
+      const step = el.dataset.pump === 'value' ? pumpStep() : ['quantity','concentration'].includes(el.dataset.pump)
+        ? (pump.cUnit === 'мг' ? 0.1 : 1) : 1;
+      minus.disabled = !number(el.value) || number(el.value) <= step;
+    }
+  }
+  function changePump(field, value) {
+    if (field === 'drug') {
+      pump = {...newPump(value), reverse:pump.reverse};
+    } else if (field === 'preset') {
+      const drug = drugFor(pump.drug);
+      const index = Number(value.slice(1));
+      if (value.startsWith('m') && drug.mixtures?.[index]) {
+        const mixture = drug.mixtures[index];
+        Object.assign(pump,{ preparation:'mix', cUnit:mixture.unit, quantity:mixture.quantity, volume:mixture.volume });
+      } else if (value.startsWith('c') && drug.concentrations[index]) {
+        const concentration = drug.concentrations[index];
+        Object.assign(pump,{ preparation:'direct', cUnit:concentration.unit, concentration:concentration.value });
+      }
+    } else {
+      if (field === 'unit' && !pump.reverse) pump.value = '';
+      if (field === 'cUnit' || field === 'preparation') {
+        pump.quantity = '';
+        pump.concentration = '';
+        if (field === 'preparation') pump.volume = '';
+      }
+      pump[field] = value;
+    }
+    render(true);
   }
   function renderCatalog() {
     return `<div class="bar"><h2>Справочник препаратов</h2>
@@ -479,6 +636,7 @@
     draft = clone(database.scenarios.find(item => item.id === id) || emptyPlan());
     dirty = false;
     activeCard = 0;
+    infusionCard = 0;
     render();
   }
   function loadScenario(id) {
@@ -507,12 +665,18 @@
     const dy = end.clientY - start.clientY;
     if (Math.abs(dx) >= 55 && Math.abs(dx) > 1.35 * Math.abs(dy)) {
       if (event.cancelable) event.preventDefault();
-      moveCard(activeCard + (dx < 0 ? 1 : -1));
+      moveCard(currentIndex() + (dx < 0 ? 1 : -1));
     }
   }, { passive: false });
   main.addEventListener('input', event => {
     const el = event.target;
     if (el.tagName === 'SELECT' || el.type === 'file') return;
+    if (el.dataset.pump) {
+      if (el.dataset.pump === 'weight') patientWeight = el.value;
+      else pump[el.dataset.pump] = el.value;
+      updatePump();
+      return;
+    }
     const global = el.dataset.global;
     if (global === 'patientWeight') {
       patientWeight = el.value;
@@ -531,7 +695,7 @@
       if (!file) return;
       try {
         if (file.size > 5_000_000) throw Error('Файл настроек превышает 5 МБ.');
-        pendingImport = upgrade(validate(JSON.parse(await file.text())));
+        pendingImport = migrate(validate(JSON.parse(await file.text())));
         promptDialog('Заменить настройки?',
           `<p class="subtle space">В файле препаратов: ${pendingImport.drugs.length}, сценариев: ${pendingImport.scenarios.length}. Импорт заменит текущие препараты и сценарии.</p>`,
           button('Импортировать','import','','class="primary"'));
@@ -541,6 +705,10 @@
       return;
     }
     if (el.tagName !== 'SELECT') return;
+    if (el.dataset.pump) {
+      changePump(el.dataset.pump, el.value);
+      return;
+    }
     if (el.dataset.global === 'scenario') loadScenario(el.value);
     else if (el.dataset.global === 'method') {
       draft.method = el.value;
@@ -579,6 +747,7 @@
     else next.drugs[index] = drug;
     const committed = commit(next);
     if (!committed) return;
+    if (!pump.drug) pump = newPump(defaultPumpDrug());
     dialog.close();
     if (committed === 'session') notify('Настройки доступны до закрытия вкладки. Выгрузи резервную копию.', true);
     render();
@@ -603,6 +772,7 @@
     const committed = commit(next);
     if (!committed) return;
     convert(draft);
+    if (pump.drug === drug.id) pump = newPump(defaultPumpDrug());
     dialog.close();
     if (committed === 'session') notify('Настройки доступны до закрытия вкладки. Выгрузи резервную копию.', true);
     render();
@@ -627,8 +797,59 @@
     const container = buttonEl.closest('[data-stage]');
     const row = rowFrom(buttonEl);
     switch (action) {
-      case 'previous-card': moveCard(activeCard - 1); break;
-      case 'next-card': moveCard(activeCard + 1); break;
+      case 'infusion-view':
+        infusionView = value;
+        render();
+        break;
+      case 'pump-direction': {
+        const result = calculate(pump, patientWeight);
+        pump.reverse = !pump.reverse;
+        pump.value = decimalInput(result.answer);
+        render(true);
+        break;
+      }
+      case 'pump-step': {
+        const field = buttonEl.dataset.stepField;
+        const step = field === 'value' ? pumpStep() : field === 'quantity' || field === 'concentration'
+          ? (pump.cUnit === 'мг' ? 0.1 : 1) : 1;
+        const previous = field === 'weight' ? patientWeight : pump[field];
+        const next = decimalInput((number(previous) || 0) + Number(value) * step);
+        if (field === 'weight') patientWeight = next;
+        else pump[field] = next;
+        main.querySelector(`input[data-pump="${field}"]`).value = next;
+        updatePump();
+        break;
+      }
+      case 'pump-reference': {
+        const dose = drugFor(pump.drug)?.doses.find(d => d.id === value);
+        if (!dose) return;
+        pump.reverse = false;
+        pump.unit = dose.unit;
+        pump.value = dose.value;
+        render(true);
+        main.querySelector('#pump-value')?.focus();
+        break;
+      }
+      case 'pump-save-mixture': {
+        if (pump.preparation !== 'mix' || !number(pump.quantity) || !number(pump.volume)) {
+          notify('Укажи количество препарата и итоговый объём.');
+          break;
+        }
+        const next = clone(database);
+        const drug = next.drugs.find(item => item.id === pump.drug);
+        if (!drug) break;
+        drug.mixtures ??= [];
+        if (!drug.mixtures.some(m => m.unit === pump.cUnit && number(m.quantity) === number(pump.quantity) && number(m.volume) === number(pump.volume))) {
+          drug.mixtures.push({ quantity:pump.quantity, unit:pump.cUnit, volume:pump.volume });
+        }
+        if (commit(next)) {
+          render(true);
+          notify('Разведение сохранено.');
+        }
+        break;
+      }
+      case 'previous-card': moveCard(currentIndex() - 1); break;
+      case 'next-card': moveCard(currentIndex() + 1); break;
       case 'review': review(); break;
       case 'review-card':
         dialog.close();
@@ -653,6 +874,7 @@
       case 'confirm-new-patient':
         dialog.close();
         patientWeight = '';
+        pump = newPump(pump.drug);
         loadPlan(draft.id);
         notify('Открыт новый расчёт.');
         break;
@@ -680,8 +902,8 @@
         break;
       }
       case 'add-row':
-        draft[value].push(blank());
-        activeCard = draft[value].length - 1 + (value === 'maintenance' ? draft.induction.length : 0);
+        draft[value].push(blank(null, value === 'maintenance' ? 'мг/кг/ч' : 'мг/кг'));
+        setCard(draft[value].length - 1);
         dirty = true;
         render(true);
         main.querySelector(`[data-stage="${value}"]:last-of-type [data-field="drug"]`)?.focus();
@@ -693,11 +915,11 @@
         const index = Number(container.dataset.index);
         rows.splice(index, 1);
         if (action === 'remove-row') {
-          activeCard = Math.max(0, Math.min(activeCard, cards().length - 1));
+          setCard(Math.max(0, Math.min(currentIndex(), cards().length - 1)));
         } else {
           const offset = action === 'up' ? -1 : 1;
           rows.splice(index + offset, 0, row);
-          activeCard += offset;
+          setCard(currentIndex() + offset);
         }
         dirty = true;
         render();
@@ -749,6 +971,7 @@
         if (!committed) return;
         pendingImport = null;
         patientWeight = '';
+        pump = newPump(infusionDrugs().some(drug => drug.id === pump.drug) ? pump.drug : defaultPumpDrug());
         tab = 'calc';
         dialog.close();
         loadPlan(database.scenarios[0]?.id);
