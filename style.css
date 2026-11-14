@@ -184,6 +184,19 @@ nav { margin-top: 12px; }
 .block-card .result :is(strong, small), [data-block-root] .gas-journal { overflow-wrap: anywhere; }
 .block-entry { display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr) auto; align-items: end; }
 .block-remove { width: 44px; padding: 0; font-size: 1.35rem; }
+.drug-sections { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.drug-sections button { padding-inline: 5px; }
+.drug-sections button[aria-current] { background: var(--accent); color: #fff; border-color: var(--accent); }
+.preop-results, .preop-sources { padding: 0; list-style: none; }
+.preop-results { display: grid; gap: 6px; margin: 8px 0 0; }
+.preop-results button { width: 100%; text-align: left; }
+.preop-results small, .preop-sources small { display: block; color: var(--muted); }
+.preop-card h3 { margin-top: 12px; }
+.preop-card p { overflow-wrap: anywhere; }
+.preop-evidence { background: var(--accent-pale); padding: 9px 11px; border-radius: 8px; margin-top: 12px; }
+.preop-evidence h3 { margin-top: 0; }
+.preop-sources { margin-block: 4px 0; }
+.preop-sources li + li { margin-top: 7px; }
 @media (max-width: 360px) {
   .block-entry { grid-template-columns: 1fr; }
 }

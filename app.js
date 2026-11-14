@@ -5,6 +5,7 @@
   const storageKey = 'anesthesia-calculator-v1';
   const main = document.querySelector('#main');
   const dialog = document.querySelector('#dialog');
+  const preop = AnesthesiaPreop.create(dialog);
   const status = document.querySelector('#status');
   const nav = document.querySelector('#nav');
   const inhalation = AnesthesiaInhalation.create();
@@ -91,6 +92,7 @@
   const spinalDefaults = { baricity: '', concentration: '', direction: 'dose', amount: '' };
   let spinal = { ...spinalDefaults };
   let tab = 'calc';
+  let drugSection = 'preop';
   let dirty = false;
   let activeCard = 0;
   let infusionCard = 0;
@@ -143,7 +145,8 @@
     const working = tab === 'calc' || tab === 'pump';
     main.innerHTML = working
       ? patientPanel() + renderCalc() + renderPatientReset()
-      : tab === 'methods' ? renderMethods() + renderPatientReset() : renderCatalog();
+      : tab === 'methods' ? renderMethods() + renderPatientReset() : renderDrugSections();
+    if (tab === 'drugs' && drugSection === 'preop') preop.mount();
     inhalation.refresh(main);
     epidural.refresh(main);
     if (tab === 'methods' && selectedMethod === 'block') nerveBlock.refresh(main, patientWeight);
@@ -455,8 +458,16 @@
     dialog.setAttribute('aria-labelledby','dialog-title');
     dialog.showModal();
   }
+  function renderDrugSections() {
+    const sectionButton = (title, key) => button(title, 'drug-section', key,
+      drugSection === key ? 'aria-current="true"' : '');
+    return `<div class="drug-sections" role="group" aria-label="Разделы препаратов">
+      ${sectionButton('Перед операцией', 'preop')}
+      ${sectionButton('Индукция и инфузии', 'catalog')}
+      </div>` + (drugSection === 'preop' ? preop.markup() : renderCatalog());
+  }
   function renderCatalog() {
-    return `<div class="bar"><h2>Справочник препаратов</h2>
+    return `<div class="bar space"><h2>Справочник препаратов</h2>
       ${button('Добавить препарат','add-drug','','class="primary"')}</div>` + database.drugs.map(drug =>
       `<section class="row"><div class="bar"><h3>${esc(drug.name)}</h3>
       <div class="actions">${drug.doses.length ? button('Справочник','drug-reference',drug.id) : ''}
@@ -667,6 +678,10 @@
   });
   main.addEventListener('input', event => {
     const el = event.target;
+    if (el.id === 'preop-query') {
+      preop.input(el.value);
+      return;
+    }
     if (tab === 'methods') {
       if (selectedMethod === 'block' && el.tagName === 'INPUT') {
         if (el.dataset.global === 'patientWeight') patientWeight = el.value;
@@ -821,6 +836,18 @@
     const container = buttonEl.closest('[data-stage]');
     const row = rowFrom(buttonEl);
     switch (action) {
+      case 'drug-section':
+        if (tab !== 'drugs' || value === drugSection || !['preop', 'catalog'].includes(value)) break;
+        drugSection = value;
+        render();
+        main.querySelector('[data-action="drug-section"][aria-current]')?.focus({ preventScroll: true });
+        break;
+      case 'preop-card':
+        preop.open(value);
+        break;
+      case 'preop-retry':
+        preop.retry();
+        break;
       case 'flip-infusion': {
         if (!row || !units[row.unit].time) break;
         const { answer } = calculate(row, row.weightRequired ? '' : patientWeight);
