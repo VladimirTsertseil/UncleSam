@@ -238,6 +238,10 @@
         option('', 'Выбрать', '') +
         concentrations.map((c,i) => option(String(i), c.value + ' ' + c.unit + '/мл', '')).join(''))
       : '';
+    const preparationOptions = option('mix','Количество и объём',row.preparation) +
+      option('direct','Концентрация на мл',row.preparation);
+    const concentrationUnits = massOptions(row.cUnit, Object.keys(scales).filter(unit =>
+      dimension(unit) === dimension(units[row.unit].mass)));
     const showWeight = weightBased && row.weightRequired;
     const concentrationName = row.preparation === 'mix' ? 'Единица количества' : 'Единица концентрации';
     const arrows = `<button type="button" data-action="up" aria-label="Выше" ${index === 0 ? 'disabled' : ''}>↑</button>
@@ -247,20 +251,33 @@
       ${!drug && !row.label ? `<div class="space">${select('Препарат','drug',drugOptions)}</div>` : ''}
       <div class="dose-line space">
         <div>
-          <label for="card-dose">${doseLabel}</label>
+          <label for="card-dose">${infusion && !row.reverse ? 'Доза' : doseLabel}</label>
           <div class="stepper">
             <button type="button" data-action="step-dose" value="-1" aria-label="Уменьшить дозу">−</button>
             <input id="card-dose" data-field="value" value="${esc(row.value)}"${numeric}>
             <button type="button" data-action="step-dose" value="1" aria-label="Увеличить дозу">+</button>
           </div>
         </div>
-        ${select(row.reverse ? 'Единица результата' : 'Единица','unit',unitOptions(row.unit, infusion))}
+        <div class="${infusion ? 'infusion-direction' : ''}">
+          ${select(row.reverse ? 'Единица результата' : 'Единица','unit',unitOptions(row.unit, infusion))}
+          ${infusion ? button('⇄','flip-infusion','',row.reverse
+            ? 'aria-label="Ввод дозы" title="Ввод дозы"'
+            : 'aria-label="Ввод скорости в мл/ч" title="Ввод скорости в мл/ч"') : ''}
+        </div>
       </div>
       ${showWeight ? `<div class="space">${input('Расчётная масса, кг','weight',row.weight,numeric)}
         ${row.note ? `<p class="subtle">${esc(row.note)}</p>` : ''}</div>` : ''}
-      ${quickConcentration ? `<div class="quick-concentration space">${quickConcentration}</div>`
-        : infusion && drug && row.preparation === 'direct'
-          ? `<div class="quick-concentration space">${input('Концентрация, ' + row.cUnit + '/мл','concentration',row.concentration,numeric)}</div>` : ''}
+      ${infusion ? `<div class="infusion-preparation space">
+        ${select('Разведение','preparation',preparationOptions)}
+        ${row.preparation === 'mix' ? `<div class="mixture-fields">
+          ${input('Количество','quantity',row.quantity,numeric)}
+          ${select('Единица','cUnit',concentrationUnits)}
+          ${input('Итоговый объём, мл','volume',row.volume,numeric)}
+        </div>` : quickConcentration || `<div class="mixture-fields direct-fields">
+          ${input('Концентрация, ' + row.cUnit + '/мл','concentration',row.concentration,numeric)}
+          ${select('Единица','cUnit',concentrationUnits)}
+        </div>`}
+      </div>` : quickConcentration ? `<div class="quick-concentration space">${quickConcentration}</div>` : ''}
       ${mixtures.length ? `<div class="quick-concentration space">${select('Сохранённое разведение','mixture',option('', 'Выбрать', '') +
         mixtures.map((m,i) => option(String(i), m.quantity + ' ' + m.unit + ' / ' + m.volume + ' мл', '')).join(''))}</div>` : ''}
       <div class="result"><strong data-answer></strong><small data-math hidden></small></div>
@@ -273,13 +290,12 @@
       <details data-key="${key}-prep">
         <summary>Настроить карточку</summary>
         <div class="grid">
-        ${infusion ? select('Направление расчёта','reverse',option('false','Доза → мл/ч',String(row.reverse)) + option('true','Мл/ч → доза',String(row.reverse))) : ''}
-        ${select('Приготовление раствора','preparation',option('direct','Указать концентрацию',row.preparation) + option('mix','Количество и итоговый объём',row.preparation))}
+        ${!infusion ? select('Приготовление раствора','preparation',preparationOptions) : ''}
         ${drug || row.label ? select('Препарат','drug',drugOptions) : ''}
         ${stage === 'maintenance' ? select('Введение','kind',option('bolus','Болюс',infusion ? 'infusion' : 'bolus') + option('infusion','Инфузия',infusion ? 'infusion' : 'bolus')) : ''}
-        ${select(concentrationName,'cUnit',massOptions(row.cUnit, Object.keys(scales).filter(unit => dimension(unit) === dimension(units[row.unit].mass))))}
-        ${row.preparation === 'mix' ? input('Количество препарата','quantity',row.quantity,numeric) +
-          input('Итоговый объём раствора, мл','volume',row.volume,numeric) : !infusion || !drug || quickConcentration
+        ${!infusion || quickConcentration ? select(concentrationName,'cUnit',concentrationUnits) : ''}
+        ${!infusion && row.preparation === 'mix' ? input('Количество препарата','quantity',row.quantity,numeric) +
+          input('Итоговый объём раствора, мл','volume',row.volume,numeric) : (!infusion || quickConcentration)
             ? input('Концентрация, ' + row.cUnit + '/мл','concentration',row.concentration,numeric) : ''}
         ${!showWeight && weightBased ? input(weightLabel,'weight',row.weight,numeric) : ''}
         ${select('Правило расчётной массы','weightRequired',
@@ -473,7 +489,13 @@
       const previous = { weightRequired: row.weightRequired };
       const dose = units[row.unit].time && drugFor(el.value)?.doses.find(d => !d.referenceOnly && units[d.unit].time);
       const next = blank(el.value || null, dose ? dose.unit : row.unit);
-      if (dimension(units[next.unit].mass) === 'ммоль') next.cUnit = 'ммоль';
+      if (units[next.unit].time) {
+        const family = dimension(units[next.unit].mass);
+        if (!drugFor(el.value)?.concentrations.some(c => dimension(c.unit) === family)) {
+          next.preparation = 'mix';
+          next.cUnit = family === 'ммоль' ? 'ммоль' : 'мг';
+        }
+      }
       Object.assign(row, next, previous);
     } else if (field === 'weightRequired') {
       row.weightRequired = el.value === 'true';
@@ -497,10 +519,6 @@
       if (!found) return;
       row.cUnit = found.unit;
       row.concentration = found.value;
-    } else if (field === 'reverse') {
-      row.reverse = el.value === 'true';
-      row.value = '';
-      row.preset = '';
     } else {
       if (field === 'value') row.preset = '';
       if (field === 'unit') {
@@ -679,6 +697,17 @@
     const container = buttonEl.closest('[data-stage]');
     const row = rowFrom(buttonEl);
     switch (action) {
+      case 'flip-infusion': {
+        if (!row || !units[row.unit].time) break;
+        const { answer } = calculate(row, row.weightRequired ? '' : patientWeight);
+        row.reverse = !row.reverse;
+        row.value = Number.isFinite(answer) && answer > 0
+          ? new Intl.NumberFormat('ru-RU',{ useGrouping:false, maximumSignificantDigits:15 }).format(answer) : '';
+        row.preset = '';
+        dirty = true;
+        render(true);
+        break;
+      }
       case 'save-row-mixture': {
         if (!row?.drug || !number(row.quantity) || !number(row.volume)) {
           notify('Укажи количество препарата и итоговый объём.');
