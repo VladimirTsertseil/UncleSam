@@ -87,7 +87,6 @@
   let tab = 'calc';
   let dirty = false;
   let activeCard = 0;
-  let infusionView = 'calculator';
   let infusionCard = 0;
   const infusionDrugs = () => database.drugs.filter(drug =>
     drug.id !== 'eto' || drug.doses.some(dose => units[dose.unit]?.time));
@@ -146,17 +145,21 @@
       if (el.dataset.tab === tab) el.setAttribute('aria-current', 'page');
       else el.removeAttribute('aria-current');
     }
-    const showCards = tab === 'calc' || (tab === 'pump' && infusionView === 'maintenance');
-    const content = showCards ? renderCalc() : tab === 'pump' ? renderPump()
-      : tab === 'drugs' ? renderCatalog() : renderSettings();
-    main.innerHTML = (tab === 'calc' || tab === 'pump' ? patientPanel() : '') + content;
-    if (showCards || tab === 'pump') {
+    const working = tab === 'calc' || tab === 'pump';
+    main.innerHTML = working ? patientPanel() + renderCalc() + (tab === 'pump' ? renderAdditionalInfusion() : '')
+      : renderCatalog();
+    if (working) {
       for (const details of main.querySelectorAll('details[data-key]')) {
         if (opened.has(details.dataset.key)) details.open = true;
       }
-      if (showCards) updateResults();
-      else updatePump();
+      updateResults();
+      if (tab === 'pump') updatePump();
     }
+  }
+  function renderAdditionalInfusion() {
+    return `<details class="additional-infusion" data-key="additional-infusion"><summary>Доп. инфузия</summary>
+      ${renderPump()}
+    </details>`;
   }
   const currentStage = () => tab === 'pump' ? 'maintenance' : 'induction';
   const currentIndex = () => tab === 'pump' ? infusionCard : activeCard;
@@ -168,7 +171,7 @@
   function moveCard(index) {
     if (index < 0 || index >= cards().length || index === currentIndex()) return;
     setCard(index);
-    render();
+    render(true);
   }
   function patientPanel() {
     const scenarioOptions = option('', 'Новый сценарий', draft.id) + database.scenarios
@@ -187,11 +190,12 @@
     const stage = currentStage();
     const maintenance = stage === 'maintenance';
     const card = deck[index];
-    return (maintenance ? button('К инфузомату','infusion-view','calculator') : '') + `
+    return `
+      ${maintenance ? '<h2 id="maintenance-heading">Поддержание</h2>' : ''}
       <section class="deck" aria-label="Карточки препаратов" data-deck>
         ${card ? `<div class="deck-header">
           <button type="button" data-action="previous-card" aria-label="Предыдущий препарат" ${index === 0 ? 'disabled' : ''}>‹</button>
-          <p role="status">${stages[card.stage]} <span>· ${index+1} / ${deck.length}</span></p>
+          <p role="status"><span>${index+1} / ${deck.length}</span></p>
           <button type="button" data-action="next-card" aria-label="Следующий препарат" ${index + 1 === deck.length ? 'disabled' : ''}>›</button>
         </div>${renderRow(card.row, card.stage, card.index)}`
           : `<div class="panel">${button('Добавить первый препарат','add-row',stage)}</div>`}
@@ -368,8 +372,7 @@
     }).join('');
     dialog.innerHTML = `<div class="bar"><h2 id="dialog-title">Итог</h2>${button('К расчёту','close')}</div>
       <p class="subtle">${esc([draft.name, number(patientWeight) && fmt(number(patientWeight)) + ' кг'].filter(Boolean).join(' · '))}</p>
-      ${content || '<p class="space">Добавь препарат, чтобы увидеть расчёт.</p>'}
-      <p class="subtle space">Сверь дозы, расчётную массу и фактическую концентрацию перед введением.</p>`;
+      ${content || '<p class="space">Нет препаратов для расчёта.</p>'}`;
     dialog.setAttribute('aria-labelledby','dialog-title');
     dialog.showModal();
   }
@@ -456,7 +459,6 @@
       <div class="pump-direction">${button(pump.reverse ? 'Скорость → доза · переключить' : 'Доза → скорость · переключить','pump-direction')}</div>
       ${pump.reverse ? rateBlock + doseBlock : doseBlock + rateBlock}
       <p role="status" class="subtle pump-status" data-pump-status></p>` : ''}
-      ${button('Настроить схему поддержания','infusion-view','maintenance')}
     </div>`;
   }
   function updatePump() {
@@ -523,11 +525,10 @@
       ${button('Редактировать','edit-drug',drug.id)}</div></div>
       <p class="subtle">${drug.concentrations.map(c => esc(c.value + ' ' + c.unit + '/мл')).join(' · ')}
       ${drug.doses.length ? (drug.concentrations.length ? ' · ' : '') + drug.doses.length + ' справочных записей' : ''}</p></section>`
-    ).join('');
+    ).join('') + renderBackup();
   }
-  function renderSettings() {
-    return `<section class="panel"><h2>Резервная копия</h2>
-      <p class="subtle space">Препараты и сценарии хранятся в этом браузере. Экспорт содержит настройки, которые ты сохранил в шаблонах.</p>
+  function renderBackup() {
+    return `<section class="panel space" aria-labelledby="backup-title"><h2 id="backup-title">Резервная копия</h2>
       <div class="actions space">
       ${button('Экспортировать JSON','export','','class="primary"')}
       ${button('Импортировать JSON','choose-file')}
@@ -701,8 +702,8 @@
     const global = el.dataset.global;
     if (global === 'patientWeight') {
       patientWeight = el.value;
-      if (tab === 'pump' && infusionView === 'calculator') updatePump();
-      else updateResults();
+      updateResults();
+      if (tab === 'pump') updatePump();
     } else if (global) {
       draft[global] = el.value;
       dirty = true;
@@ -819,10 +820,6 @@
     const container = buttonEl.closest('[data-stage]');
     const row = rowFrom(buttonEl);
     switch (action) {
-      case 'infusion-view':
-        infusionView = value;
-        render();
-        break;
       case 'pump-direction': {
         const result = calculate(pump, pump.weightRequired ? '' : patientWeight);
         pump.reverse = !pump.reverse;
@@ -901,7 +898,6 @@
         dialog.close();
         patientWeight = '';
         pump = newPump(defaultPumpDrug());
-        infusionView = 'calculator';
         loadPlan(draft.id);
         notify('Открыт новый расчёт.');
         break;
@@ -949,7 +945,7 @@
           setCard(currentIndex() + offset);
         }
         dirty = true;
-        render();
+        render(true);
         break;
       }
       case 'apply-dose': {
