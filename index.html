@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0e3029">
+  <meta name="description" content="Пересчёт доз при индукции и поддержании анестезии у взрослых.">
+  <title>Калькулятор анестезии</title>
+  <link rel="stylesheet" href="./style.css">
+  <script defer src="./calc.js"></script>
+  <script defer src="./catalog.js"></script>
+  <script defer src="./app.js"></script>
+</head>
+<body>
+  <header class="top">
+    <div class="shell">
+      <p class="eyebrow">Анестезиология · Взрослые</p>
+      <h1>Калькулятор анестезии</h1>
+      <p class="intro">Индукция и поддержание</p>
+      <nav aria-label="Разделы" id="nav">
+        <button data-tab="calc" type="button">Расчёт</button>
+        <button data-tab="drugs" type="button">Препараты</button>
+        <button data-tab="settings" type="button">Настройки</button>
+      </nav>
+    </div>
+  </header>
+  <main class="shell" id="main"></main>
+  <div class="shell footer">Перед введением сверьте назначение, расчётную массу и фактическую концентрацию.</div>
+  <dialog id="dialog"></dialog>
+  <div id="status" class="toast" role="status" hidden></div>
+</body>
+</html>
