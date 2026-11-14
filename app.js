@@ -146,7 +146,8 @@
       else el.removeAttribute('aria-current');
     }
     const working = tab === 'calc' || tab === 'pump';
-    main.innerHTML = working ? patientPanel() + renderCalc() + (tab === 'pump' ? renderAdditionalInfusion() : '')
+    main.innerHTML = working
+      ? patientPanel() + renderCalc() + (tab === 'pump' ? renderAdditionalInfusion() : '') + renderPatientReset()
       : renderCatalog();
     if (working) {
       for (const details of main.querySelectorAll('details[data-key]')) {
@@ -176,13 +177,16 @@
   function patientPanel() {
     const scenarioOptions = option('', 'Новый сценарий', draft.id) + database.scenarios
       .map(scenario => option(scenario.id, scenario.name, draft.id)).join('');
-    return `<section class="panel patient-panel shared-patient" aria-label="Текущий пациент">
+    return `<section class="patient-panel shared-patient" aria-label="Текущий пациент">
       <div class="grid weight-grid">
         ${select('Сценарий','scenario',scenarioOptions,'global')}
         ${input('Масса, кг','patientWeight',patientWeight,numeric,'global')}
       </div>
-      ${button('Новый пациент','new-patient','','class="patient-reset"')}
+      ${renderScenarioTools()}
     </section>`;
+  }
+  function renderPatientReset() {
+    return `<div class="patient-reset">${button('Новый пациент','new-patient')}</div>`;
   }
   function renderCalc() {
     const deck = cards();
@@ -202,19 +206,30 @@
       </section>
       <div class="deck-actions">
         ${button('Итог','review','','class="primary"')}
-      </div>
-      <details class="scenario-tools" data-key="scenario-tools"><summary>Настроить сценарий</summary>
+      </div>`;
+  }
+  function renderScenarioTools() {
+    const stage = currentStage();
+    return `<details class="scenario-tools" data-key="scenario-tools">
+      <summary aria-label="Настроить сценарий" title="Настроить сценарий">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+          <path d="M4 7h6m4 0h6M4 17h10m4 0h2"/>
+          <circle cx="12" cy="7" r="2"/><circle cx="16" cy="17" r="2"/>
+        </svg>
+      </summary>
+      <div class="panel scenario-editor">
         ${draft.note ? `<p class="subtle">${esc(draft.note)} ${link(draft.source)}</p>` : ''}
         <div class="grid">${input('Название','name',draft.name,' maxlength="120"','global')}
         ${input('Описание','note',draft.note,' maxlength="1000"','global')}</div>
-        ${maintenance ? renderMethod() : ''}
+        ${stage === 'maintenance' ? renderMethod() : ''}
         <div class="actions space">
           ${button('Добавить препарат','add-row',stage)}
           ${button('Сохранить как сценарий','save-as')}
           ${draft.id ? button('Обновить сценарий','save-scenario') : ''}
           ${draft.id ? button('Удалить сценарий','delete-scenario','','class="danger"') : ''}
         </div>
-      </details>`;
+      </div>
+    </details>`;
   }
   function renderMethod() {
     return `<div class="grid">
@@ -899,6 +914,7 @@
         patientWeight = '';
         pump = newPump(defaultPumpDrug());
         loadPlan(draft.id);
+        main.querySelector('.shared-patient').scrollIntoView({ block: 'start' });
         notify('Открыт новый расчёт.');
         break;
       case 'load-scenario': dialog.close(); loadPlan(value); break;

@@ -115,12 +115,37 @@ nav { margin-top: 12px; }
   nav button { padding-inline: 7px; font-size: .94rem; }
   .pump-hero .pump-grid { grid-template-columns: 1fr; }
 }
-.shared-patient { margin-bottom: 12px; display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: end; }
-.shared-patient .patient-reset { white-space: nowrap; }
-@media (max-width: 610px) {
-  .shared-patient { grid-template-columns: 1fr; }
-  .shared-patient .patient-reset { justify-self: end; min-height: 40px; }
+.shared-patient { position: relative; margin-bottom: 12px; }
+.shared-patient .weight-grid {
+  grid-template-columns: minmax(0, 1fr) 78px;
+  gap: 8px;
+  padding-right: 52px;
 }
+.shared-patient .weight-grid :is(input, select) {
+  min-width: 0;
+  height: 44px;
+  padding-inline: 8px;
+}
+.shared-patient .scenario-tools { margin: 0; padding: 0; }
+.shared-patient .scenario-tools > summary {
+  position: absolute;
+  top: calc(1.5 * .88rem + 4px);
+  right: 0;
+  display: grid;
+  place-items: center;
+  list-style: none;
+  width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.scenario-tools > summary::-webkit-details-marker { display: none; }
+.scenario-tools > summary svg { width: 22px; height: 22px; }
+.scenario-tools[open] > summary { background: var(--accent-pale); }
+.scenario-editor { margin-top: 10px; }
+.patient-reset { display: flex; justify-content: flex-end; margin: 16px 0; }
 
 .additional-infusion { margin: 18px 0 16px; }
 .additional-infusion > summary { font-size: 1.15rem; }
