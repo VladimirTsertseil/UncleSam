@@ -197,6 +197,11 @@ nav { margin-top: 12px; }
 .preop-evidence h3 { margin-top: 0; }
 .preop-sources { margin-block: 4px 0; }
 .preop-sources li + li { margin-top: 7px; }
+.preop-sources li, .preop-card h2, .preop-card h3 { overflow-wrap: anywhere; }
+.preop-content { white-space: pre-wrap; }
+.preop-editor fieldset { min-inline-size: 0; border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px 12px; }
+.preop-editor legend { color: var(--muted); padding-inline: 4px; font-size: .88rem; }
+.preop-editor-actions { position: sticky; bottom: -20px; background: var(--surface); border-top: 1px solid var(--border); padding-block: 8px; }
 @media (max-width: 360px) {
   .block-entry { grid-template-columns: 1fr; }
 }
