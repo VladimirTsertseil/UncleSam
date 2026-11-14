@@ -7,6 +7,7 @@
   };
   const format = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 3 });
   const time = new Intl.DateTimeFormat('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const nitrousMacAt40 = 104;
   function decimal(raw, max) {
     const input = raw.trim();
     if (!/^(?:\d+(?:[.,]\d+)?|[.,]\d+)$/.test(input)) return null;
@@ -23,8 +24,8 @@
       .map(n => String(n).padStart(2, '0')).join(':');
   }
   function create() {
-    const defaults = { agent: 'sevo', age: '', endTidal: '', target: '', flow: '', dial: '' };
-    const limits = { age: [18, 120], endTidal: [0, 100], target: [0, 100], flow: [Number.MIN_VALUE, 100], dial: [0, 100] };
+    const defaults = { agent: 'sevo', age: '', endTidal: '', nitrous: '', target: '', flow: '', dial: '' };
+    const limits = { age: [18, 120], endTidal: [0, 100], nitrous: [0, 100], target: [0, 100], flow: [Number.MIN_VALUE, 100], dial: [0, 100] };
     let fields = { ...defaults };
     let segments = [];
     let active = null;
@@ -46,42 +47,49 @@
       // Convert the delivered vapour to liquid using a molar volume of 24.12 L at 21 °C.
       return segment.flow * segment.dial / 100 * minutes * molarMass / (24.12 * density);
     }
-    function ageAdjustedMac() {
+    function ageFactor() {
       const age = decimal(fields.age, 120);
       if (age === null || age < 18) return null;
-      return agents[fields.agent].mac40 * 10 ** (-0.00269 * (age - 40));
+      return 10 ** (-0.00269 * (age - 40));
     }
+    const nitrous = () => fields.nitrous.trim() ? decimal(fields.nitrous, 100) : 0;
     function mac() {
-      const reference = ageAdjustedMac();
+      const factor = ageFactor();
       const endTidal = decimal(fields.endTidal, 100);
-      return reference && endTidal !== null ? format.format(endTidal / reference) : '—';
+      const n2o = nitrous();
+      if (!factor || endTidal === null || n2o === null || endTidal + n2o > 100) return '—';
+      return format.format((endTidal / agents[fields.agent].mac40 + n2o / nitrousMacAt40) / factor);
     }
     function targetConcentration() {
-      const reference = ageAdjustedMac();
+      const factor = ageFactor();
       const target = decimal(fields.target, 100);
-      if (!reference || target === null) return '—';
-      const concentration = target * reference;
-      return concentration <= 100 ? format.format(concentration) + ' %' : '—';
+      const n2o = nitrous();
+      if (!factor || target === null || n2o === null) return '—';
+      const remaining = target - n2o / (nitrousMacAt40 * factor);
+      if (remaining < -1e-10) return 'Вклад N₂O уже выше цели';
+      const concentration = Math.max(0, remaining) * agents[fields.agent].mac40 * factor;
+      return concentration + n2o <= 100 ? format.format(concentration) + ' %' : 'Вне диапазона';
     }
     function markup() {
       const options = Object.entries(agents).map(([id, agent]) =>
         `<option value="${id}"${id === fields.agent ? ' selected' : ''}>${agent.name}</option>`).join('');
       return `<div class="gas-method" data-gas-root>
-        <label>Метод<select><option>Ингаляционная анестезия</option></select></label>
         <label class="space">Анестетик<select data-gas-field="agent">${options}</select></label>
         <section class="panel space">
           <h2>МАК с поправкой на возраст</h2>
           <div class="gas-grid space">
             ${field('age', 'Возраст, лет')}
             ${field('endTidal', 'В конце выдоха, об. %')}
+            ${field('nitrous', 'N₂O в конце выдоха, об. %')}
           </div>
-          <div class="result"><strong>МАК <span data-gas-mac>—</span></strong></div>
+          <div class="result"><strong>Суммарный МАК <span data-gas-mac>—</span></strong></div>
+          <p class="subtle space" data-gas-sum-error hidden>Сумма концентраций в конце выдоха превышает 100 %.</p>
           <details>
             <summary>Пересчёт целевой МАК</summary>
             ${field('target', 'Целевая доля МАК')}
-            <p class="space">В конце выдоха <strong data-gas-target>—</strong></p>
+            <p class="space">Выбранный анестетик в конце выдоха <strong data-gas-target>—</strong></p>
           </details>
-          <p class="subtle space">Расчёт для взрослых по последнему введённому измерению выбранного анестетика. Вклад закиси азота не учитывается.</p>
+          <p class="subtle space">Если N₂O не используется, оставь поле пустым. Для расчёта только по N₂O введи 0 в поле выбранного анестетика.</p>
         </section>
         <section class="panel space">
           <h2>Расход анестетика</h2>
@@ -130,6 +138,7 @@
     function updateFields(root) {
       root.querySelector('[data-gas-mac]').textContent = mac();
       root.querySelector('[data-gas-target]').textContent = targetConcentration();
+      root.querySelector('[data-gas-sum-error]').hidden = decimal(fields.endTidal, 100) + nitrous() <= 100;
       for (const [key, [min, max]] of Object.entries(limits)) {
         const value = decimal(fields[key], max);
         root.querySelector(`[data-gas-field="${key}"]`).setAttribute('aria-invalid',

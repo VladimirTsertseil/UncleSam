@@ -85,6 +85,9 @@
   const emptyPlan = () => plan('', '', '', []);
   let draft = clone(database.scenarios[0] || emptyPlan());
   let patientWeight = '';
+  let selectedMethod = 'gas';
+  const spinalDefaults = { baricity: '', concentration: '', direction: 'dose', amount: '' };
+  let spinal = { ...spinalDefaults };
   let tab = 'calc';
   let dirty = false;
   let activeCard = 0;
@@ -138,8 +141,9 @@
     const working = tab === 'calc' || tab === 'pump';
     main.innerHTML = working
       ? patientPanel() + renderCalc() + renderPatientReset()
-      : tab === 'methods' ? inhalation.markup() + renderPatientReset() : renderCatalog();
+      : tab === 'methods' ? renderMethods() + renderPatientReset() : renderCatalog();
     inhalation.refresh(main);
+    if (tab === 'methods' && selectedMethod === 'spinal') updateSpinal();
     if (working) {
       for (const details of main.querySelectorAll('details[data-key]')) {
         if (opened.has(details.dataset.key)) details.open = true;
@@ -172,6 +176,38 @@
   }
   function renderPatientReset() {
     return `<div class="patient-reset">${button('Новый пациент','new-patient')}</div>`;
+  }
+  function renderMethods() {
+    const choices = option('gas','Ингаляционная анестезия',selectedMethod) +
+      option('spinal','Спинальная анестезия',selectedMethod);
+    return select('Метод','method',choices,'methods') + (selectedMethod === 'gas' ? inhalation.markup() : `
+      <section class="panel space gas-method">
+        <h2>Бупивакаин</h2>
+        <p class="subtle space">Используй концентрацию с упаковки формы для интратекального введения.</p>
+        <div class="gas-grid space">
+          ${select('Баричность','baricity',
+            option('','Выбрать',spinal.baricity) + option('hyper','Гипербарический',spinal.baricity) +
+            option('iso','Изобарический',spinal.baricity),'spinal')}
+          ${input('Концентрация, мг/мл','concentration',spinal.concentration,numeric,'spinal')}
+          ${select('Пересчёт','direction',option('dose','мг → мл',spinal.direction) +
+            option('volume','мл → мг',spinal.direction),'spinal')}
+          ${input(spinal.direction === 'dose' ? 'Выбранная доза, мг' : 'Объём, мл',
+            'amount',spinal.amount,numeric,'spinal')}
+        </div>
+        <div class="result"><strong data-spinal-result role="status"></strong></div>
+      </section>`);
+  }
+  function updateSpinal() {
+    const concentration = number(spinal.concentration);
+    const amount = number(spinal.amount);
+    const fromDose = spinal.direction === 'dose';
+    const result = concentration && amount && (fromDose ? amount / concentration : amount * concentration);
+    main.querySelector('[data-spinal-result]').textContent = result
+      ? fmt(result) + (Number.isFinite(result) ? (fromDose ? ' мл' : ' мг') : '')
+      : 'Укажи концентрацию и ' + (fromDose ? 'дозу' : 'объём');
+    for (const field of main.querySelectorAll('input[data-spinal]')) {
+      field.setAttribute('aria-invalid', String(Boolean(field.value.trim() && !number(field.value))));
+    }
   }
   function renderCalc() {
     const deck = cards();
@@ -608,7 +644,10 @@
   main.addEventListener('input', event => {
     const el = event.target;
     if (tab === 'methods') {
-      inhalation.input(el);
+      if (el.dataset.spinal && el.tagName === 'INPUT') {
+        spinal[el.dataset.spinal] = el.value;
+        updateSpinal();
+      } else if (selectedMethod === 'gas') inhalation.input(el);
       return;
     }
     if (el.tagName === 'SELECT' || el.type === 'file') return;
@@ -625,7 +664,16 @@
   main.addEventListener('change', async event => {
     const el = event.target;
     if (tab === 'methods') {
-      if (el.tagName === 'SELECT') inhalation.input(el);
+      if (el.dataset.methods === 'method') {
+        selectedMethod = el.value;
+        render();
+        main.querySelector('[data-methods="method"]').focus({ preventScroll: true });
+      } else if (el.dataset.spinal && el.tagName === 'SELECT') {
+        spinal[el.dataset.spinal] = el.value;
+        if (el.dataset.spinal === 'direction') spinal.amount = '';
+        render();
+        main.querySelector(`[data-spinal="${el.dataset.spinal}"]`).focus({ preventScroll: true });
+      } else if (selectedMethod === 'gas' && el.tagName === 'SELECT') inhalation.input(el);
       return;
     }
     if (el.id === 'file') {
@@ -777,7 +825,7 @@
         break;
       }
       case 'new-patient':
-        if (dirty || patientWeight || inhalation.hasData()) {
+        if (dirty || patientWeight || inhalation.hasData() || spinal.concentration || spinal.amount || spinal.baricity) {
           promptDialog('Начать новый расчёт?',
             '<p class="subtle space">Данные пациента, текущие расчёты и журнал расхода будут сброшены.</p>',
             button('Начать расчёт','confirm-new-patient','','class="primary"'));
@@ -788,6 +836,7 @@
         dialog.close();
         patientWeight = '';
         inhalation.reset();
+        spinal = { ...spinalDefaults };
         loadPlan(draft.id);
         main.scrollIntoView({ block: 'start' });
         notify('Открыт новый расчёт.');
