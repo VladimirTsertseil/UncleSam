@@ -251,3 +251,43 @@ nav { margin-top: 12px; }
 .clinical-help h3 { color: var(--ink); font-size: 1rem; margin-bottom: 6px; }
 .clinical-help h4 { color: var(--muted); font-size: .9rem; margin: 11px 0 3px; }
 .clinical-help p { color: var(--ink); font-size: .92rem; line-height: 1.55; overflow-wrap: anywhere; }
+
+/* Архив шаблонов: исходные записи без изменения текста. */
+.templates-shell { max-width: 1050px; margin: 0 auto; }
+.templates-heading { margin: 0 0 14px; }
+.templates-heading h2 { margin-bottom: 4px; }
+.template-switch { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; margin-bottom: 13px; }
+.template-switch button[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); background: var(--accent-pale); }
+.template-search { display: block; }
+.template-search input { width: 100%; }
+.template-count { color: var(--muted); font-size: .85rem; margin: 8px 0 11px; }
+.template-layout { display: grid; grid-template-columns: minmax(230px, 300px) minmax(0, 1fr); align-items: start; gap: 12px; }
+.template-list { background: var(--surface); border: 1px solid var(--border); border-radius: 13px; overflow: auto; max-height: 70vh; padding: 5px; }
+.template-item { display: block; width: 100%; text-align: left; border: 1px solid transparent; background: transparent; padding: 10px; font-weight: normal; min-height: 59px; }
+.template-item + .template-item { margin-top: 2px; }
+.template-item[aria-current="true"] { border-color: var(--accent); color: var(--accent); background: var(--accent-pale); }
+.template-item-title { display: block; font-weight: 650; line-height: 1.3; overflow-wrap: anywhere; }
+.template-item-status { display: block; color: var(--muted); font-size: .75rem; margin-top: 4px; overflow-wrap: anywhere; }
+.template-detail { background: var(--surface); border: 1px solid var(--border); border-radius: 13px; padding: clamp(13px, 3vw, 20px); min-width: 0; scroll-margin-top: 16px; }
+.template-detail-head { display: flex; align-items: start; gap: 12px; justify-content: space-between; flex-wrap: wrap; }
+.template-detail-heading { flex: 1 1 160px; min-width: 0; }
+.template-detail-heading h3 { font-size: 1.2rem; overflow-wrap: anywhere; }
+.template-detail-head button { flex: 0 0 auto; }
+.template-copy-status { color: var(--accent); margin-top: 8px; font-size: .9rem; }
+.template-safety, .template-quality-warning { border-left: 3px solid #b7cbbc; background: #f3f7f3; font-size: .87rem; line-height: 1.5; padding: 9px 11px; margin-top: 13px; }
+.template-quality-warning { border-color: #b78737; background: #faf5e9; }
+.template-text { white-space: pre-wrap; overflow-wrap: anywhere; word-break: normal; line-height: 1.65; font-size: .95rem; margin-top: 16px; user-select: text; -webkit-user-select: text; }
+.template-empty { color: var(--muted); padding: 18px 10px; }
+.template-provenance { border-top: 1px solid var(--border); padding-top: 8px; margin-top: 20px; font-size: .88rem; }
+.template-provenance p { margin: 7px 0; overflow-wrap: anywhere; }
+.template-provenance ul { padding-left: 20px; }
+.template-provenance li + li { margin-top: 5px; }
+@media (max-width: 760px) {
+  .template-layout { grid-template-columns: minmax(0, 1fr); }
+  .template-list { max-height: 245px; }
+  .template-detail-head button { width: 100%; }
+}
+@media (max-width: 600px) {
+  #nav { -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+  #nav button { flex: 0 0 auto; padding-inline: 10px; }
+}
