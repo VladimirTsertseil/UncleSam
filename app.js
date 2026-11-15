@@ -15,6 +15,7 @@
     { label: 'Предоперационные', cards: AnesthesiaRiskCalculators },
     { label: 'Критические состояния', cards: AnesthesiaCriticalCalculators }
   ]);
+  const templates = AnesthesiaTemplates.create(main);
   const uid = () => globalThis.crypto?.randomUUID?.() || Date.now().toString(36) + Math.random().toString(36).slice(2);
   const clone = value => structuredClone(value);
   const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({
@@ -150,6 +151,7 @@
     if (working) main.innerHTML = patientPanel() + renderCalc() + renderPatientReset();
     else if (tab === 'methods') main.innerHTML = renderMethods() + renderPatientReset();
     else if (tab === 'calculators') main.innerHTML = calculators.markup();
+    else if (tab === 'templates') main.innerHTML = templates.markup();
     else main.innerHTML = renderDrugSections();
     if (tab === 'drugs' && drugSection === 'preop') preop.mount();
     inhalation.refresh(main);
@@ -682,7 +684,7 @@
     }
   });
   main.addEventListener('input', event => {
-    if (tab === 'calculators') return;
+    if (tab === 'calculators' || tab === 'templates') return;
     const el = event.target;
     if (el.id === 'preop-query') {
       preop.input(el.value);
@@ -713,7 +715,7 @@
     } else handleField(el);
   });
   main.addEventListener('change', async event => {
-    if (tab === 'calculators') return;
+    if (tab === 'calculators' || tab === 'templates') return;
     const el = event.target;
     if (tab === 'methods') {
       if (el.dataset.methods === 'method') {
