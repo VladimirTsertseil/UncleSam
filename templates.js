@@ -4,29 +4,37 @@
   const archive = globalThis.AnesthesiaTemplateArchive;
   const protocolItems = archive?.protocol_templates ?? [];
   const preopItems = globalThis.AnesthesiaPreopTemplateArchive?.preop_templates ?? [];
+  const consentItems = globalThis.AnesthesiaConsentArchive?.consent_templates ?? [];
   const groups = [
     { id: 'protocol', title: 'Протоколы', items: protocolItems },
-    { id: 'preop', title: 'Предоперационный осмотр', items: preopItems }
+    { id: 'preop', title: 'Предоперационный осмотр', items: preopItems },
+    { id: 'consent', title: 'Предоперационные согласия', items: consentItems }
   ];
   const esc = value => String(value ?? '').replace(/[&<>"']/g,
     char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
   const normalize = value => String(value ?? '').toLocaleLowerCase('ru-RU').replaceAll('ё', 'е').trim();
   const quality = item => !item.text_original ? 'Только название'
+    : item.capture_state === 'transcribed_from_photos' ? 'Перенесено с фото'
     : item.capture_state === 'complete_visible_text' || item.capture_state === 'full_visible_tooltip_transcribed'
       ? 'Текст сохранён' : 'Нужна сверка';
 
   function create(root) {
     let groupId = 'protocol';
+    let consentType = 'oms';
     let query = '';
     const selected = {
       protocol: protocolItems[0]?.id ?? null,
-      preop: preopItems[0]?.id ?? null
+      preop: preopItems[0]?.id ?? null,
+      consent: consentItems.find(item => item.consent_group === 'oms')?.id ?? null
     };
     const current = () => groups.find(group => group.id === groupId);
+    const visibleItems = () => groupId === 'consent'
+      ? consentItems.filter(item => item.consent_group === consentType)
+      : current().items;
     const filtered = () => {
       const terms = normalize(query).split(/\s+/).filter(Boolean);
-      if (!terms.length) return current().items;
-      return current().items.filter(item => {
+      if (!terms.length) return visibleItems();
+      return visibleItems().filter(item => {
         const haystack = normalize([item.name_original, item.category, item.text_original].join(' '));
         return terms.every(term => haystack.includes(term));
       });
@@ -77,12 +85,17 @@
 
     function markup() {
       const items = filtered();
-      return `<section class="templates-shell" data-templates-root aria-label="Архив протоколов анестезиологии">
+      return `<section class="templates-shell" data-templates-root aria-label="Архив протоколов, осмотров и предоперационных согласий">
         <div class="templates-heading"><h2>${esc(current().title)}</h2>
-          <p class="subtle">${current().items.length} записей из рабочего архива</p></div>
+          <p class="subtle">${visibleItems().length} записей из рабочего архива</p></div>
         <div class="template-switch" role="group" aria-label="Разделы рабочих записей">
           ${groups.map(group => `<button type="button" data-template-group="${group.id}" aria-pressed="${group.id === groupId}">${esc(group.title)} · ${group.items.length}</button>`).join('')}
         </div>
+        ${groupId === 'consent' ? `<div class="template-consent-subnav" role="group" aria-label="Источник согласия">
+          <button type="button" data-consent-type="oms" aria-pressed="${consentType === 'oms'}">ОМС · ${consentItems.filter(item => item.consent_group === 'oms').length}</button>
+          <button type="button" data-consent-type="hr" aria-pressed="${consentType === 'hr'}">х/р · ${consentItems.filter(item => item.consent_group === 'hr').length}</button>
+        </div>
+        <p class="subtle template-consent-notice">Архивные формулировки для предоперационных согласий. Не заменяют оформленное информированное добровольное согласие.</p>` : ''}
         <label class="template-search">Поиск по названию и тексту
           <input type="search" data-template-query autocomplete="off" autocapitalize="off" spellcheck="false"
                  placeholder="Например, СМА, ЛОР, аорта" value="${esc(query)}">
@@ -146,6 +159,15 @@
       if (group) {
         if (groupId !== group.dataset.templateGroup) {
           groupId = group.dataset.templateGroup;
+          query = '';
+          refresh();
+        }
+        return;
+      }
+      const consentButton = event.target.closest('[data-consent-type]');
+      if (consentButton) {
+        if (consentType !== consentButton.dataset.consentType) {
+          consentType = consentButton.dataset.consentType;
           query = '';
           refresh();
         }
