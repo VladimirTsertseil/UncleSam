@@ -2,12 +2,7 @@
   'use strict';
 
   const archive = globalThis.AnesthesiaTemplateArchive;
-  const statusItems = archive?.status_templates ?? [];
   const protocolItems = archive?.protocol_templates ?? [];
-  const groups = [
-    { id: 'status', title: 'Формулировки', items: statusItems },
-    { id: 'protocol', title: 'Протоколы', items: protocolItems }
-  ];
   const esc = value => String(value ?? '').replace(/[&<>"']/g,
     char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
   const normalize = value => String(value ?? '').toLocaleLowerCase('ru-RU').replaceAll('ё', 'е').trim();
@@ -16,24 +11,19 @@
       ? 'Текст сохранён' : 'Нужна сверка';
 
   function create(root) {
-    let groupId = 'status';
     let query = '';
-    const selected = {
-      status: statusItems[0]?.id ?? null,
-      protocol: protocolItems[0]?.id ?? null
-    };
-    const current = () => groups.find(group => group.id === groupId);
+    let selectedId = protocolItems[0]?.id ?? null;
     const filtered = () => {
       const terms = normalize(query).split(/\s+/).filter(Boolean);
-      if (!terms.length) return current().items;
-      return current().items.filter(item => {
+      if (!terms.length) return protocolItems;
+      return protocolItems.filter(item => {
         const haystack = normalize([item.name_original, item.category, item.text_original].join(' '));
         return terms.every(term => haystack.includes(term));
       });
     };
     const active = (items = filtered()) => {
-      if (!items.some(item => item.id === selected[groupId])) selected[groupId] = items[0]?.id ?? null;
-      return items.find(item => item.id === selected[groupId]) ?? null;
+      if (!items.some(item => item.id === selectedId)) selectedId = items[0]?.id ?? null;
+      return items.find(item => item.id === selectedId) ?? null;
     };
 
     function listMarkup(items = filtered()) {
@@ -47,7 +37,7 @@
     }
 
     function detailMarkup(item = active()) {
-      if (!item) return '<article class="template-detail"><p class="template-empty">Выберите другой тип шаблонов или уточните поиск.</p></article>';
+      if (!item) return '<article class="template-detail"><p class="template-empty">Уточните поиск или выберите другой протокол.</p></article>';
       const hasText = typeof item.text_original === 'string' && item.text_original.length > 0;
       const flagged = quality(item) !== 'Текст сохранён';
       const notes = Array.isArray(item.review_notes) ? item.review_notes : [];
@@ -78,12 +68,8 @@
     function markup() {
       const items = filtered();
       return `<section class="templates-shell" data-templates-root aria-label="Архив шаблонов анестезиологии">
-        <div class="templates-heading"><h2>Рабочие шаблоны</h2>
-          <p class="subtle">${statusItems.length + protocolItems.length} записей из архива · исходные формулировки сохранены</p></div>
-        <div class="template-switch" role="group" aria-label="Тип шаблонов">
-          ${groups.map(group => `<button type="button" data-template-group="${group.id}" aria-pressed="${group.id === groupId}">
-            ${esc(group.title)} · ${group.items.length}</button>`).join('')}
-        </div>
+        <div class="templates-heading"><h2>Протоколы</h2>
+          <p class="subtle">${protocolItems.length} записей из рабочего архива</p></div>
         <label class="template-search">Поиск по названию и тексту
           <input type="search" data-template-query autocomplete="off" autocapitalize="off" spellcheck="false"
                  placeholder="Например, СМА, ЛОР, аорта" value="${esc(query)}">
@@ -143,18 +129,9 @@
     root.addEventListener('click', event => {
       const host = event.target.closest('[data-templates-root]');
       if (!host) return;
-      const group = event.target.closest('[data-template-group]');
-      if (group) {
-        if (groupId !== group.dataset.templateGroup) {
-          groupId = group.dataset.templateGroup;
-          query = '';
-          refresh();
-        }
-        return;
-      }
       const itemButton = event.target.closest('[data-template-id]');
       if (itemButton) {
-        selected[groupId] = itemButton.dataset.templateId;
+        selectedId = itemButton.dataset.templateId;
         refreshResults();
         if (window.matchMedia('(max-width: 760px)').matches) {
           root.querySelector('[data-template-detail]')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
