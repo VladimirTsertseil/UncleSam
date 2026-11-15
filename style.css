@@ -245,3 +245,9 @@ nav { margin-top: 12px; }
   .top nav { gap: 0; }
   .top nav button { flex: 1 1 auto; min-width: 0; padding-inline: 4px; font-size: .875rem; }
 }
+
+/* Клиническая справка располагается после источников, внизу карточки. */
+.clinical-help { margin-top: 22px; padding-top: 15px; border-top: 1px solid var(--border); }
+.clinical-help h3 { color: var(--ink); font-size: 1rem; margin-bottom: 6px; }
+.clinical-help h4 { color: var(--muted); font-size: .9rem; margin: 11px 0 3px; }
+.clinical-help p { color: var(--ink); font-size: .92rem; line-height: 1.55; overflow-wrap: anywhere; }
