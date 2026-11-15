@@ -291,3 +291,11 @@ nav { margin-top: 12px; }
   #nav { -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
   #nav button { flex: 0 0 auto; padding-inline: 10px; }
 }
+
+/* Разделы клинических записей и подразделы согласий — удобные кнопки для iPhone. */
+.template-switch button { min-width: 0; overflow-wrap: anywhere; }
+.template-switch button:last-child { grid-column: 1 / -1; }
+.template-consent-subnav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; margin-bottom: 8px; }
+.template-consent-subnav button { min-width: 0; }
+.template-consent-subnav button[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); background: var(--accent-pale); }
+.template-consent-notice { font-size: .82rem; line-height: 1.45; margin-bottom: 12px; }
