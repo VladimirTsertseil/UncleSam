@@ -11,6 +11,10 @@
   const inhalation = AnesthesiaInhalation.create();
   const epidural = AnesthesiaEpidural.create();
   const nerveBlock = AnesthesiaNerveBlock.create();
+  const calculators = AnesthesiaCalculators.create(main, [
+    { label: 'Предоперационные', cards: AnesthesiaRiskCalculators },
+    { label: 'Критические состояния', cards: AnesthesiaCriticalCalculators }
+  ]);
   const uid = () => globalThis.crypto?.randomUUID?.() || Date.now().toString(36) + Math.random().toString(36).slice(2);
   const clone = value => structuredClone(value);
   const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({
@@ -143,9 +147,10 @@
       else el.removeAttribute('aria-current');
     }
     const working = tab === 'calc' || tab === 'pump';
-    main.innerHTML = working
-      ? patientPanel() + renderCalc() + renderPatientReset()
-      : tab === 'methods' ? renderMethods() + renderPatientReset() : renderDrugSections();
+    if (working) main.innerHTML = patientPanel() + renderCalc() + renderPatientReset();
+    else if (tab === 'methods') main.innerHTML = renderMethods() + renderPatientReset();
+    else if (tab === 'calculators') main.innerHTML = calculators.markup();
+    else main.innerHTML = renderDrugSections();
     if (tab === 'drugs' && drugSection === 'preop') preop.mount();
     inhalation.refresh(main);
     epidural.refresh(main);
@@ -677,6 +682,7 @@
     }
   });
   main.addEventListener('input', event => {
+    if (tab === 'calculators') return;
     const el = event.target;
     if (el.id === 'preop-query') {
       preop.input(el.value);
@@ -707,6 +713,7 @@
     } else handleField(el);
   });
   main.addEventListener('change', async event => {
+    if (tab === 'calculators') return;
     const el = event.target;
     if (tab === 'methods') {
       if (el.dataset.methods === 'method') {
@@ -894,7 +901,7 @@
         break;
       }
       case 'new-patient':
-        if (dirty || patientWeight || inhalation.hasData() || epidural.hasData() || nerveBlock.hasData() ||
+        if (dirty || patientWeight || inhalation.hasData() || epidural.hasData() || nerveBlock.hasData() || calculators.hasData() ||
             spinal.concentration || spinal.amount || spinal.baricity) {
           promptDialog('Начать новый расчёт?',
             '<p class="subtle space">Данные пациента, текущие расчёты и журнал расхода будут сброшены.</p>',
@@ -908,6 +915,7 @@
         inhalation.reset();
         epidural.reset();
         nerveBlock.reset();
+        calculators.reset();
         spinal = { ...spinalDefaults };
         loadPlan(draft.id);
         main.scrollIntoView({ block: 'start' });

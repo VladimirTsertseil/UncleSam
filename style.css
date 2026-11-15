@@ -207,6 +207,37 @@ nav { margin-top: 12px; }
 .preop-editor fieldset { min-inline-size: 0; border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px 12px; }
 .preop-editor legend { color: var(--muted); padding-inline: 4px; font-size: .88rem; }
 .preop-editor-actions { position: sticky; bottom: -20px; background: var(--surface); border-top: 1px solid var(--border); padding-block: 8px; }
+
+.clinical-shell { max-width: 760px; margin-inline: auto; }
+.clinical-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-bottom: 12px; }
+.clinical-groups button { min-width: 0; padding: 7px 5px; }
+.clinical-groups [aria-pressed="true"] { background: var(--accent-pale); color: var(--accent); border-color: var(--accent); }
+.clinical-picker { margin-bottom: 12px; }
+.clinical-card h2 { margin-bottom: 4px; }
+.clinical-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+.clinical-fields small { display: block; margin-top: 3px; font-weight: 400; }
+.clinical-checks { padding: 4px 0 0; margin: 16px 0 0; border: 0; min-width: 0; }
+.clinical-checks legend { color: var(--muted); font-size: .88rem; }
+.clinical-check { display: flex; align-items: center; gap: 10px; min-height: 44px; border-bottom: 1px solid var(--border); padding: 6px 0; cursor: pointer; }
+.clinical-check input { width: 20px; min-height: 20px; height: 20px; flex: 0 0 20px; margin: 0; accent-color: var(--accent); }
+.clinical-result { border-radius: 10px; background: var(--accent-pale); margin-top: 14px; padding: 12px; }
+.clinical-result h3 { color: var(--muted); font-size: .86rem; }
+.clinical-result > strong { display: block; font-size: clamp(1.2rem, 4.5vw, 1.6rem); font-variant-numeric: tabular-nums; }
+.clinical-result p { margin-top: 7px; }
+.clinical-result dl { margin: 7px 0; }
+.clinical-result dl div { display: flex; flex-wrap: wrap; gap: 2px 12px; justify-content: space-between; }
+.clinical-result dd { margin: 0; font-weight: 650; }
+.clinical-next { font-size: .91rem; }
+.clinical-error { color: #8c301e; margin-top: 10px; }
+.clinical-sources ul { margin: 0; padding-inline-start: 20px; overflow-wrap: anywhere; }
+@media (max-width: 600px) {
+  #nav { gap: 2px; overflow-x: auto; }
+  #nav button { flex: 1 0 auto; padding-inline: 5px; font-size: clamp(.72rem, 3.2vw, .92rem); white-space: nowrap; }
+}
+@media (max-width: 380px) {
+  .clinical-fields { grid-template-columns: minmax(0, 1fr); }
+  .clinical-groups button { font-size: .84rem; }
+}
 @media (max-width: 360px) {
   .block-entry { grid-template-columns: 1fr; }
 }
