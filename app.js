@@ -845,6 +845,9 @@
       case 'preop-card':
         preop.open(value);
         break;
+      case 'preop-browse':
+        preop.open();
+        break;
       case 'preop-retry':
         preop.retry();
         break;

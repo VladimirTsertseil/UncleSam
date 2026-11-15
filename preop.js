@@ -29,12 +29,16 @@
     let requested = false;
     let edits = new Map();
     let cardId;
+    let cardOrder = [];
+    let cardIndex = 0;
+    let searchOrder = [];
+    let swipe;
     try { edits = readEdits(); } catch { /* The published cards remain available. */ }
 
     function load() {
       if (archive || loading) return;
       failure = false;
-      loading = fetch('./preop-drugs-2026.json?v=2')
+      loading = fetch('./preop-drugs-2026.json?v=3')
         .then(response => {
           if (!response.ok) throw Error('Database unavailable');
           return response.json();
@@ -83,6 +87,7 @@
         </label>
         <p class="subtle space" id="preop-status" role="status"></p>
         <button type="button" data-action="preop-retry" class="space" hidden>Повторить загрузку</button>
+        <button type="button" data-action="preop-browse" class="space" hidden>Все препараты</button>
         <ul class="preop-results" id="preop-results"></ul>
         <details class="space">
           <summary>О базе и источниках</summary>
@@ -98,6 +103,8 @@
       document.querySelector('[data-action="preop-retry"]').hidden = !failure;
       const value = normalize(query);
       const found = matches(value);
+      searchOrder = found.map(({ drug }) => drug.id);
+      document.querySelector('[data-action="preop-browse"]').hidden = !archive;
       const limit = 40;
       status.textContent = failure ? 'Не удалось загрузить базу.' : !archive ? 'Загрузка базы…'
         : value.length < 2 ? 'Введи хотя бы две буквы МНН или торгового названия.'
@@ -113,7 +120,7 @@
     }
     function original(drug) {
       const { operation, regional_anesthesia: regional } = drug;
-      const showRegional = regionalCardIds.has(drug.id) && drug.references.includes('FAR_ANTICOAG_2025');
+      const showRegional = regionalCardIds.has(drug.id) || drug.id === 'drug_058';
       const sources = drug.references.map(key => archive.sources[key]).filter(Boolean)
         .map(s => `${s.title} · ${s.type} | ${s.url}`);
       if (drug.brand_source_url) sources.push('Торговые названия и состав | ' + drug.brand_source_url);
@@ -121,18 +128,18 @@
         title: drug.inn_ru,
         subtitle: [drug.group, drug.subgroup].filter(Boolean).join(' · '),
         sections: [
-          ['ingredients', 'Действующие вещества', drug.ingredients_ru.join(' + ')],
-          ['brands', 'Торговые названия', drug.trade_names_ru.join(', ')],
-          ['risks', 'Особые риски', drug.high_risk_flags],
           ['before', 'Перед операцией', [operation.decision, operation.details].filter(Boolean).join('\n\n')],
           ['hold', 'Срок отмены', operation.hold_interval],
+          ['checks', 'Что проверить', drug.preoperative_checks],
+          ['resume', 'Возобновление', drug.resume],
           ...(showRegional ? [
             ['spinal', 'Спинальная и эпидуральная анестезия', regional.spinal_epidural],
             ['deep', 'Глубокая периферическая блокада', regional.deep_peripheral_block],
             ['superficial', 'Поверхностная периферическая блокада', regional.superficial_peripheral_block]
           ] : []),
-          ['checks', 'Что проверить', drug.preoperative_checks],
-          ['resume', 'Возобновление', drug.resume],
+          ['risks', 'Особые риски', drug.high_risk_flags],
+          ['ingredients', 'Действующие вещества', drug.ingredients_ru.join(' + ')],
+          ['brands', 'Торговые названия', drug.trade_names_ru.join(', ')],
           ['sources', 'Источники для сверки', sources.join('\n') || 'Клинический источник не указан.']
         ].filter(([, , text]) => text?.trim()).map(([id, title, text]) => ({ id, title, text }))
       };
@@ -145,14 +152,19 @@
         return `<li><a href="${escape(href)}" target="_blank" rel="noopener noreferrer">${escape(title.trim() || href)}</a></li>`;
       }).join('') + '</ul>';
     }
-    function showCard(focusEdit = false) {
+    function showCard(focusSection = '') {
       const drug = archive.drugs.get(cardId);
       const saved = edits.get(cardId);
       const card = saved ?? original(drug);
       dialog.innerHTML = `<article class="preop-card">
-        <h2 id="dialog-title">${escape(card.title)}</h2>
+        <nav class="preop-navigation" aria-label="Перелистывание препаратов">
+          <button type="button" data-preop-editor="previous" aria-label="Предыдущий препарат"${cardIndex === 0 ? ' disabled' : ''}>‹</button>
+          <span aria-label="Карточка ${cardIndex + 1} из ${cardOrder.length}">${cardIndex + 1} / ${cardOrder.length}</span>
+          <button type="button" data-preop-editor="next" aria-label="Следующий препарат"${cardIndex === cardOrder.length - 1 ? ' disabled' : ''}>›</button>
+          <button type="button" data-action="close" aria-label="Закрыть карточку" autofocus>×</button>
+        </nav>
+        <h2 id="dialog-title" tabindex="-1">${escape(card.title)}</h2>
         <div class="actions space">
-          <button type="button" data-action="close" autofocus>Закрыть</button>
           <button type="button" data-preop-editor="edit">Редактировать</button>
         </div>
         ${card.subtitle ? `<p class="subtle space">${escape(card.subtitle)}</p>` : ''}
@@ -166,12 +178,23 @@
       dialog.setAttribute('aria-labelledby', 'dialog-title');
       if (!dialog.open) dialog.showModal();
       dialog.scrollTop = 0;
-      if (focusEdit) dialog.querySelector('[data-preop-editor="edit"]').focus();
+      if (focusSection) dialog.querySelector(focusSection).focus({ preventScroll: true });
     }
     function open(id) {
-      if (!archive?.drugs.has(id) || dialog.open) return;
-      cardId = id;
+      if (!archive || dialog.open || (id && !archive.drugs.has(id))) return;
+      cardOrder = id && searchOrder.length > 1 ? searchOrder : [...archive.drugs.keys()].sort((a, b) =>
+        collator.compare(edits.get(a)?.title ?? archive.drugs.get(a).inn_ru, edits.get(b)?.title ?? archive.drugs.get(b).inn_ru));
+      cardIndex = id ? cardOrder.indexOf(id) : 0;
+      if (cardIndex < 0) return;
+      cardId = cardOrder[cardIndex];
       showCard();
+    }
+    function moveCard(direction) {
+      const next = cardIndex + direction;
+      if (next < 0 || next >= cardOrder.length) return;
+      cardIndex = next;
+      cardId = cardOrder[cardIndex];
+      showCard('#dialog-title');
     }
     function sectionFields(section) {
       return `<fieldset class="editor-item" data-preop-section="${escape(section.id)}">
@@ -214,7 +237,7 @@
         return;
       }
       refresh();
-      showCard(true);
+      showCard('[data-preop-editor="edit"]');
     }
     dialog.addEventListener('submit', event => {
       const form = event.target;
@@ -236,8 +259,10 @@
       const control = event.target.closest('[data-preop-editor]');
       if (!control) return;
       switch (control.dataset.preopEditor) {
+        case 'previous': moveCard(-1); break;
+        case 'next': moveCard(1); break;
         case 'edit': edit(); break;
-        case 'cancel': showCard(true); break;
+        case 'cancel': showCard('[data-preop-editor="edit"]'); break;
         case 'add': {
           const list = dialog.querySelector('[data-preop-sections]');
           list.insertAdjacentHTML('beforeend', sectionFields({ id: 'note', title: 'Примечание', text: '' }));
@@ -261,8 +286,31 @@
     dialog.addEventListener('cancel', event => {
       if (!dialog.querySelector('[data-preop-form]')) return;
       event.preventDefault();
-      showCard(true);
+      showCard('[data-preop-editor="edit"]');
     });
+    dialog.addEventListener('keydown', event => {
+      if (!event.target.closest('.preop-card') || !['ArrowLeft', 'ArrowRight'].includes(event.key) ||
+        event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+      event.preventDefault();
+      moveCard(event.key === 'ArrowLeft' ? -1 : 1);
+    });
+    dialog.addEventListener('touchstart', event => {
+      swipe = undefined;
+      if (event.touches.length !== 1 || !event.target.closest('.preop-card') || event.target.closest('button, a')) return;
+      const touch = event.touches[0];
+      swipe = { id: touch.identifier, x: touch.clientX, y: touch.clientY };
+    }, { passive: true });
+    dialog.addEventListener('touchcancel', () => { swipe = undefined; });
+    dialog.addEventListener('touchend', event => {
+      const start = swipe;
+      swipe = undefined;
+      if (!start || !dialog.open || !dialog.querySelector('.preop-card') || window.getSelection()?.type === 'Range') return;
+      const touch = [...event.changedTouches].find(item => item.identifier === start.id);
+      if (!touch) return;
+      const dx = touch.clientX - start.x;
+      const dy = touch.clientY - start.y;
+      if (Math.abs(dx) >= 56 && Math.abs(dx) > Math.abs(dy) * 1.5) moveCard(dx < 0 ? 1 : -1);
+    }, { passive: true });
     return {
       markup,
       mount() {

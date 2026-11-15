@@ -192,6 +192,11 @@ nav { margin-top: 12px; }
 .preop-results button { width: 100%; text-align: left; }
 .preop-results small, .preop-sources small { display: block; color: var(--muted); }
 .preop-card h3 { margin-top: 12px; }
+.preop-card { touch-action: pan-y pinch-zoom; }
+.preop-navigation { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+.preop-navigation button { min-width: 44px; min-height: 44px; padding: 0; font-size: 1.4rem; line-height: 1; }
+.preop-navigation span { color: var(--muted); font-variant-numeric: tabular-nums; text-align: center; min-width: 4ch; }
+.preop-navigation [data-action="close"] { margin-inline-start: auto; }
 .preop-card p { overflow-wrap: anywhere; }
 .preop-evidence { background: var(--accent-pale); padding: 9px 11px; border-radius: 8px; margin-top: 12px; }
 .preop-evidence h3 { margin-top: 0; }
