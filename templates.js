@@ -67,7 +67,7 @@
 
     function markup() {
       const items = filtered();
-      return `<section class="templates-shell" data-templates-root aria-label="Архив шаблонов анестезиологии">
+      return `<section class="templates-shell" data-templates-root aria-label="Архив протоколов анестезиологии">
         <div class="templates-heading"><h2>Протоколы</h2>
           <p class="subtle">${protocolItems.length} записей из рабочего архива</p></div>
         <label class="template-search">Поиск по названию и тексту
