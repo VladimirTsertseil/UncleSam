@@ -86,8 +86,6 @@
     function markup() {
       const items = filtered();
       return `<section class="templates-shell" data-templates-root aria-label="Архив протоколов, осмотров и предоперационных согласий">
-        <div class="templates-heading"><h2>${esc(current().title)}</h2>
-          <p class="subtle">${visibleItems().length} записей из рабочего архива</p></div>
         <div class="template-switch" role="group" aria-label="Разделы рабочих записей">
           ${groups.map(group => `<button type="button" data-template-group="${group.id}" aria-pressed="${group.id === groupId}">${esc(group.title)} · ${group.items.length}</button>`).join('')}
         </div>
@@ -100,7 +98,7 @@
           <input type="search" data-template-query autocomplete="off" autocapitalize="off" spellcheck="false"
                  placeholder="Например, СМА, ЛОР, аорта" value="${esc(query)}">
         </label>
-        <p class="template-count" data-template-count role="status">Найдено: ${items.length}</p>
+        <p class="template-count" data-template-count role="status"${query.trim() ? '' : ' hidden'}>Найдено: ${items.length}</p>
         <div class="template-layout">
           <div class="template-list" aria-label="Найденные шаблоны" data-template-list>${listMarkup(items)}</div>
           ${detailMarkup(active(items))}
@@ -118,7 +116,9 @@
       if (!host) return;
       const items = filtered();
       host.querySelector('[data-template-list]').innerHTML = listMarkup(items);
-      host.querySelector('[data-template-count]').textContent = 'Найдено: ' + items.length;
+      const count = host.querySelector('[data-template-count]');
+      count.textContent = 'Найдено: ' + items.length;
+      count.hidden = !query.trim();
       host.querySelector('.template-detail').outerHTML = detailMarkup(active(items));
     }
 
