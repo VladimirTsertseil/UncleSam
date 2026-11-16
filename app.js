@@ -166,10 +166,12 @@
   const openDetails = () => new Set([...main.querySelectorAll('details[open][data-key]')].map(el => el.dataset.key));
   function render(preserve = false) {
     const opened = preserve ? openDetails() : new Set();
-    for (const el of nav.querySelectorAll('button')) {
+    for (const el of nav.querySelectorAll('button[data-tab]')) {
       if (el.dataset.tab === tab) el.setAttribute('aria-current', 'page');
       else el.removeAttribute('aria-current');
     }
+    nav.querySelector('[data-nav-more]')?.classList.toggle('is-current',
+      ['methods','drugs','templates','info'].includes(tab));
     const working = tab === 'calc' || tab === 'pump';
     if (working) main.innerHTML = `<div class="ui-workspace ${tab === 'calc' ? 'ui-induction' : 'ui-infusion'}">`
       + patientPanel() + renderCalc() + renderPatientReset() + '</div>';
@@ -248,7 +250,7 @@
     if (selectedMethod === 'block') return picker + nerveBlock.markup(
       '<div class="space">' + input('Масса, кг','patientWeight',patientWeight,numeric,'global') + '</div>');
     return picker + `
-      <section class="panel space gas-method">
+      <section class="panel space gas-method ui-card ui-spinal-card">
         <h2>Бупивакаин</h2>
         <p class="subtle space">Используй концентрацию с упаковки формы для интратекального введения.</p>
         <div class="gas-grid space">
@@ -676,9 +678,9 @@
       </div>` + (drugSection === 'preop' ? preop.markup() : renderCatalog());
   }
   function renderCatalog() {
-    return `<div class="bar space"><h2>Справочник препаратов</h2>
+    return `<div class="bar space ui-drug-list-heading"><h2>Справочник препаратов</h2>
       ${button('Добавить препарат','add-drug','','class="primary"')}</div>` + database.drugs.map(drug =>
-      `<section class="row"><div class="bar"><h3>${esc(drug.name)}</h3>
+      `<section class="row ui-drug-list-row ui-card"><div class="bar"><h3>${esc(drug.name)}</h3>
       <div class="actions">${drug.doses.length ? button('Справочник','drug-reference',drug.id) : ''}
       ${button('Редактировать','edit-drug',drug.id)}</div></div>
       <p class="subtle">${drug.concentrations.map(c => esc(c.value + ' ' + c.unit + '/мл')).join(' · ')}
@@ -686,7 +688,7 @@
     ).join('') + renderBackup();
   }
   function renderBackup() {
-    return `<section class="panel space" aria-labelledby="backup-title"><h2 id="backup-title">Резервная копия</h2>
+    return `<section class="panel space ui-drug-backup ui-card" aria-labelledby="backup-title"><h2 id="backup-title">Резервная копия</h2>
       <div class="actions space">
       ${button('Экспортировать JSON','export','','class="primary"')}
       ${button('Импортировать JSON','choose-file')}
@@ -981,11 +983,36 @@
       render(true);
     } else handleField(el);
   });
+  function closeExtraNav() {
+    const menu = nav.querySelector('[data-nav-more]');
+    if (!menu) return;
+    menu.classList.remove('is-open');
+    menu.querySelector('[data-nav-more-toggle]')?.setAttribute('aria-expanded','false');
+  }
   nav.addEventListener('click', event => {
-    const newTab = event.target.closest('button')?.dataset.tab;
+    const toggle = event.target.closest('[data-nav-more-toggle]');
+    if (toggle) {
+      const menu = toggle.closest('[data-nav-more]');
+      const nextOpen = !menu.classList.contains('is-open');
+      menu.classList.toggle('is-open', nextOpen);
+      toggle.setAttribute('aria-expanded', String(nextOpen));
+      return;
+    }
+    const newTab = event.target.closest('button[data-tab]')?.dataset.tab;
     if (!newTab) return;
+    closeExtraNav();
     tab = newTab;
     render();
+  });
+  nav.addEventListener('keydown', event => {
+    if (event.key !== 'Escape') return;
+    const menu = nav.querySelector('[data-nav-more]');
+    if (!menu?.classList.contains('is-open')) return;
+    closeExtraNav();
+    menu.querySelector('[data-nav-more-toggle]')?.focus();
+  });
+  document.addEventListener('click', event => {
+    if (!event.target.closest?.('#nav')) closeExtraNav();
   });
   dialog.addEventListener('input', event => {
     const el = event.target;
