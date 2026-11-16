@@ -216,7 +216,7 @@
     ].filter(Boolean).join(' · ');
     return `<section class="patient-panel shared-patient ui-card ui-patient-card${patientCollapsed ? ' is-collapsed' : ''}" aria-label="Текущий пациент">
       <div class="patient-panel-heading">
-        <strong>${patientCollapsed ? 'Пациент' : 'Данные пациента'}</strong>
+        <strong>Пациент</strong>
         ${patientCollapsed && summary ? `<span class="patient-panel-preview">${esc(summary)}</span>` : ''}
         ${button(patientCollapsed ? '+' : '−','toggle-patient','',`class="patient-collapse" aria-expanded="${!patientCollapsed}" aria-label="${patientCollapsed ? 'Развернуть данные пациента' : 'Свернуть данные пациента'}" title="${patientCollapsed ? 'Развернуть' : 'Свернуть'}"`)}
       </div>
@@ -431,7 +431,7 @@
     return `<article class="row${stage === 'maintenance' ? ' infusion-card ui-card ui-infusion-card' : ' ui-card ui-dose-card'}" data-stage="${stage}" data-index="${index}" aria-label="${esc(drug?.name || row.label || 'Строка расчёта')}">
       <div class="card-title${stage === 'maintenance' ? ' ui-infusion-heading' : ' ui-dose-heading'}">
         <div class="ui-dose-title">
-          <span class="ui-eyebrow">${stage === 'induction' ? 'Индукция · внутривенно' : infusion ? 'Инфузия · внутривенно' : 'Поддержание · болюс'}</span>
+          ${stage === 'maintenance' && !infusion ? '<span class="ui-pill">Болюс</span>' : ''}
           <h2>${esc(drug?.name || row.label || 'Выбор препарата')}</h2>
           ${weightBased ? `<div class="ui-dose-mass">
             <span class="ui-pill ui-mass-basis" data-active-mass>${esc(massReadoutText(row,stage))}</span>
@@ -454,7 +454,7 @@
             <button type="button" data-action="step-dose" value="1" aria-label="${row.reverse ? 'Увеличить скорость' : 'Увеличить дозу'}">+</button>
           </div>
         </div>
-        ${select(infusion ? 'Единица дозы' : 'Единица','unit',unitOptions(row.unit, infusion))}
+        ${select('Единицы','unit',unitOptions(row.unit, infusion))}
       </div>
       ${infusion ? `<div class="infusion-preparation space">
         ${select('Разведение','preparation',preparationOptions)}
@@ -473,7 +473,7 @@
         mixtures.map((m,i) => option(String(i), m.quantity + ' ' + m.unit + ' / ' + m.volume + ' мл', '')).join(''))}</div>` : ''}
       ${stage === 'maintenance'
         ? `<div class="result ui-result-panel ui-infusion-result" aria-live="polite">
-          <span class="ui-eyebrow" data-infusion-caption>Расчётная доза</span>
+          <span class="ui-eyebrow" data-infusion-caption hidden></span>
           <strong data-answer></strong>
           <div class="ui-infusion-secondary" data-infusion-secondary hidden>
             <span class="ui-infusion-secondary-label" data-infusion-secondary-label></span>
@@ -482,23 +482,22 @@
           <small data-math hidden></small>
         </div>`
         : `<div class="result ui-result-panel ui-dose-result" aria-live="polite">
-          <span class="ui-eyebrow">Расчётная доза</span>
           <strong data-answer></strong>
           <div class="ui-dose-volume" data-dose-volume-row hidden>
-            <span class="ui-dose-volume-label">Объём при выбранной концентрации</span>
+            <span class="ui-dose-volume-label">Объём раствора</span>
             <span class="ui-dose-volume-value" data-dose-volume></span>
           </div>
           <small data-math hidden></small>
         </div>`}
       <p class="dose-safety-note" data-dose-safety role="note" hidden></p>
-      ${doses.length ? `<details data-key="${key}-doses"><summary>Справочные и сохранённые дозы</summary>
+      ${doses.length ? `<details data-key="${key}-doses"><summary>Дозы и источники</summary>
         ${doses.map(d => `<div class="reference"${d.id === row.preset ? ' aria-current="true"' : ''}>
           <p><b>${esc(d.name)}</b>${d.value ? ' · ' + esc(d.value + ' ' + d.unit) : ''}</p>
           <p class="subtle">${esc(d.note)} ${link(d.source)}</p>
           ${d.value ? button('Подставить дозу','apply-dose',d.id) : button('Ввести дозу в ' + d.unit,'apply-dose',d.id)}
         </div>`).join('')}</details>` : ''}
       <details data-key="${key}-prep">
-        <summary>Настроить карточку</summary>
+        <summary>Настройки</summary>
         <div class="grid">
         ${!infusion ? select('Приготовление раствора','preparation',preparationOptions) : ''}
         ${drug || row.label ? drugPicker : ''}
@@ -587,8 +586,8 @@
       answer.parentElement.classList.toggle('has-value', Boolean(result.ready));
       const infusionCaption = article.querySelector('[data-infusion-caption]');
       if (infusionCaption) {
-        infusionCaption.textContent = forwardRate && hasVolume ? 'Скорость инфузомата'
-          : tab === 'pump' && unit.time && !row.reverse ? 'Доза действующего вещества' : 'Расчётная доза';
+        infusionCaption.hidden = !(forwardRate && hasVolume);
+        infusionCaption.textContent = forwardRate && hasVolume ? 'Скорость насоса' : '';
         const sub = article.querySelector('[data-infusion-secondary]');
         let secondaryLabel = '';
         let secondaryValue = '';
@@ -596,7 +595,7 @@
           secondaryLabel = 'Скорость насоса';
           secondaryValue = fmt(number(row.value)) + ' мл/ч';
         } else if (forwardRate && hasVolume) {
-          secondaryLabel = 'Доза действующего вещества';
+          secondaryLabel = 'Доза препарата';
           secondaryValue = result.primary;
         } else if (tab === 'pump' && !unit.time && hasVolume) {
           secondaryLabel = 'Объём раствора';
@@ -674,11 +673,11 @@
       drugSection === key ? 'aria-current="true"' : '');
     return `<div class="drug-sections" role="group" aria-label="Разделы препаратов">
       ${sectionButton('Перед операцией', 'preop')}
-      ${sectionButton('Индукция и инфузии', 'catalog')}
+      ${sectionButton('Дозы и концентрации', 'catalog')}
       </div>` + (drugSection === 'preop' ? preop.markup() : renderCatalog());
   }
   function renderCatalog() {
-    return `<div class="bar space ui-drug-list-heading"><h2>Справочник препаратов</h2>
+    return `<div class="bar space ui-drug-list-heading" aria-label="Управление справочником">
       ${button('Добавить препарат','add-drug','','class="primary"')}</div>` + database.drugs.map(drug =>
       `<section class="row ui-drug-list-row ui-card"><div class="bar"><h3>${esc(drug.name)}</h3>
       <div class="actions">${drug.doses.length ? button('Справочник','drug-reference',drug.id) : ''}
