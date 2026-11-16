@@ -316,3 +316,31 @@ nav { margin-top: 12px; }
   .patient-anthropometry { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .patient-anthropometry > label:last-child { grid-column:1 / -1; }
 }
+
+/* Компактная настройка вида массы: кнопка-весы вместо постоянно видимой панели. */
+.deck article .card-title { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.deck article .card-title h2 { min-width:0; flex:1 1 auto; }
+.card-title-actions { display:flex; align-items:center; gap:6px; flex:0 0 auto; }
+.clinical-card-heading { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.clinical-card-heading h2 { min-width:0; flex:1 1 auto; }
+.mass-disclosure { position:relative; flex:0 0 auto; z-index:1; margin:0 !important; }
+.mass-disclosure[open] { z-index:15; }
+.mass-disclosure > summary.mass-trigger,
+.deck article .mass-disclosure > summary.mass-trigger {
+  display:flex; align-items:center; justify-content:center; width:40px; min-width:40px;
+  height:40px; min-height:40px; padding:0; border:1px solid var(--border);
+  border-radius:11px; background:var(--accent-pale); color:var(--accent);
+  cursor:pointer; list-style:none; font-size:1rem; line-height:1;
+}
+.mass-trigger::-webkit-details-marker { display:none; }
+.mass-trigger::marker { content:""; }
+.mass-disclosure[open] > .mass-trigger { border-color:var(--accent); background:var(--accent-pale); }
+.mass-trigger:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.mass-widget.mass-popover {
+  position:absolute; right:0; top:calc(100% + 8px);
+  width:min(356px, calc(100vw - 48px)); max-height:min(70vh, 460px);
+  overflow-y:auto; margin:0; z-index:16;
+  background:var(--surface); box-shadow:0 10px 28px #142c2633;
+}
+.mass-popover label { display:block; }
+.mass-popover select { width:100%; }
