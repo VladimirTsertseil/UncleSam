@@ -91,7 +91,7 @@
 
   function showResult(report) {
     if (report.error) return `<p class="clinical-error">${escape(report.error)}</p>`;
-    return `<div class="clinical-result ui-result-panel"><h3>Результат</h3><strong>${escape(report.value)}</strong>
+    return `<div class="clinical-result ui-result-panel" aria-label="Результат расчёта"><strong>${escape(report.value)}</strong>
       ${report.metrics.length ? `<dl>${report.metrics.map(([label, value]) => `<div><dt>${escape(label)}</dt><dd>${escape(value)}</dd></div>`).join('')}</dl>` : ''}
       <p>${escape(report.interpretation)}</p><p class="clinical-next">${escape(report.action)}</p></div>`;
   }
@@ -230,7 +230,6 @@
         <form class="panel clinical-card ui-card ui-clinical-card" data-clinical-form novalidate>
           <div class="clinical-card-heading">
             <div class="ui-clinical-heading-text">
-              <span class="ui-eyebrow">Клинический калькулятор</span>
               <h2 tabindex="-1" data-clinical-title>${escape(card.title)}</h2>
               ${massReadout(card,raw)}
             </div>
