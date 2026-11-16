@@ -173,12 +173,13 @@
     const working = tab === 'calc' || tab === 'pump';
     if (working) main.innerHTML = `<div class="ui-workspace ${tab === 'calc' ? 'ui-induction' : 'ui-infusion'}">`
       + patientPanel() + renderCalc() + renderPatientReset() + '</div>';
-    else if (tab === 'methods') main.innerHTML = renderMethods() + renderPatientReset();
+    else if (tab === 'methods') main.innerHTML = '<div class="ui-workspace ui-methods">'
+      + renderMethods() + renderPatientReset() + '</div>';
     else if (tab === 'calculators') main.innerHTML = '<div class="ui-workspace ui-calculators">'
       + patientPanel(false) + calculators.markup() + renderPatientReset() + '</div>';
-    else if (tab === 'templates') main.innerHTML = templates.markup();
-    else if (tab === 'info') main.innerHTML = AnesthesiaAbout.markup();
-    else main.innerHTML = renderDrugSections();
+    else if (tab === 'templates') main.innerHTML = '<div class="ui-workspace ui-templates">' + templates.markup() + '</div>';
+    else if (tab === 'info') main.innerHTML = '<div class="ui-workspace ui-info">' + AnesthesiaAbout.markup() + '</div>';
+    else main.innerHTML = '<div class="ui-workspace ui-drugs">' + renderDrugSections() + '</div>';
     if (tab === 'drugs' && drugSection === 'preop') preop.mount();
     inhalation.refresh(main);
     epidural.refresh(main);
@@ -240,7 +241,8 @@
       option('spinal','Спинальная анестезия',selectedMethod) +
       option('epidural','Эпидуральная анестезия',selectedMethod) +
       option('block','Проводниковая анестезия',selectedMethod);
-    const picker = select('Метод','method',choices,'methods');
+    const picker = '<div class="ui-method-choice ui-card">' +
+      select('Метод анестезии','method',choices,'methods') + '</div>';
     if (selectedMethod === 'gas') return picker + inhalation.markup();
     if (selectedMethod === 'epidural') return picker + epidural.markup();
     if (selectedMethod === 'block') return picker + nerveBlock.markup(
