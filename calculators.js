@@ -195,11 +195,18 @@
       const selected = body.choose(p,mode,recommendation.mode);
       const opts = option('recommended','Рекомендуемая: ' + body.labels[recommendation.mode],mode) +
         body.modes.map(([id,label]) => option(id,label + ' · ' + (p?.[id] !== null && p?.[id] !== undefined ? body.fmt(p[id])+' кг' : '—'),mode)).join('');
-      return `<div class="mass-widget clinical-mass-widget">
-        <label>Масса для расчёта<select data-clinical-mass-mode>${opts}</select></label>
-        <p class="mass-current">Выбрано: <b>${escape(body.labels[mode==='recommended' ? recommendation.mode : mode])} · ${selected === null ? '—' : body.fmt(selected) + ' кг'}</b></p>
-        <p class="subtle mass-advice">${escape(recommendation.note)}</p>
-      </div>`;
+      return `<details class="mass-disclosure clinical-mass-disclosure" data-clinical-mass-details data-card-id="${escape(card.id)}">
+        <summary class="mass-trigger" aria-label="Настроить массу для расчёта" title="Масса для расчёта">
+          <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3v17M5 6h14M5 6l-3 7h6L5 6ZM19 6l-3 7h6l-3-7ZM8 20h8"/>
+          </svg>
+        </summary>
+        <div class="mass-widget mass-popover">
+          <label>Масса для расчёта<select data-clinical-mass-mode>${opts}</select></label>
+          <p class="mass-current">Выбрано: <b>${escape(body.labels[mode==='recommended' ? recommendation.mode : mode])} · ${selected === null ? '—' : body.fmt(selected) + ' кг'}</b></p>
+          <p class="subtle mass-advice">${escape(recommendation.note)}</p>
+        </div>
+      </details>`;
     }
 
     function layout() {
@@ -210,9 +217,12 @@
         `<button type="button" data-clinical-group="${index}" aria-pressed="${index === groupIndex}">${escape(group.label)}</button>`).join('')}</div>
         <label class="clinical-picker">Калькулятор<select data-clinical-picker>${groups[groupIndex].cards.map(item => option(item.id, item.title, card.id)).join('')}</select></label>
         <form class="panel clinical-card" data-clinical-form novalidate>
-          <h2 tabindex="-1" data-clinical-title>${escape(card.title)}</h2><p class="subtle">${escape(card.description)}</p>
+          <div class="clinical-card-heading">
+            <h2 tabindex="-1" data-clinical-title>${escape(card.title)}</h2>
+            ${massMarkup(card,raw)}
+          </div>
+          <p class="subtle">${escape(card.description)}</p>
           ${renderFields(visibleFields(card, raw), raw)}
-          ${massMarkup(card,raw)}
           <div class="actions space"><button class="primary" type="submit">Рассчитать</button><button type="button" data-clinical-clear>Очистить</button></div>
           <section class="clinical-output" aria-live="polite" aria-atomic="true">${report ? showResult(report) : ''}</section>
           <details class="clinical-sources"><summary>Источники и версия</summary><ul>${card.sources.map(item =>
@@ -224,7 +234,13 @@
     function refresh(focus) {
       const section = root.querySelector('[data-clinical-root]');
       if (!section) return;
+      const previous = section.querySelector('[data-clinical-mass-details]');
+      const keepMassOpen = previous?.open && previous.dataset.cardId === active().id;
       section.innerHTML = layout();
+      if (keepMassOpen) {
+        const updated = section.querySelector('[data-clinical-mass-details]');
+        if (updated) updated.open = true;
+      }
       if (focus) section.querySelector(focus)?.focus({ preventScroll: true });
     }
 
