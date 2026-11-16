@@ -91,7 +91,7 @@
 
   function showResult(report) {
     if (report.error) return `<p class="clinical-error">${escape(report.error)}</p>`;
-    return `<div class="clinical-result"><h3>Результат</h3><strong>${escape(report.value)}</strong>
+    return `<div class="clinical-result ui-result-panel"><h3>Результат</h3><strong>${escape(report.value)}</strong>
       ${report.metrics.length ? `<dl>${report.metrics.map(([label, value]) => `<div><dt>${escape(label)}</dt><dd>${escape(value)}</dd></div>`).join('')}</dl>` : ''}
       <p>${escape(report.interpretation)}</p><p class="clinical-next">${escape(report.action)}</p></div>`;
   }
@@ -187,6 +187,17 @@
     const active = () => groups[groupIndex].cards.find(card => card.id === selected[groupIndex]);
     const getData = card => saved.get(card.id) ?? {};
 
+    function massReadout(card,raw) {
+      if (!needsMass(card,raw)) return '';
+      const p = getPatient();
+      const rule = body.forCalculator(card.id,p);
+      const mode = raw.massMode || 'recommended';
+      const selected = mode === 'recommended' ? rule.mode : mode;
+      const labels = {actual:'ФМТ',ideal:'ИдМТ',adjusted:'СкМТ',lean:'ТМТ'};
+      const value = body.choose(p,mode,rule.mode);
+      return `<span class="ui-pill ui-clinical-mass-summary" aria-label="Используемая масса для расчёта">${escape(labels[selected] || 'Масса')} · ${value === null ? '—' : body.fmt(value) + ' кг'}</span>`;
+    }
+
     function massMarkup(card,raw) {
       if (!needsMass(card,raw)) return '';
       const p = getPatient();
@@ -216,14 +227,18 @@
       return `<div class="clinical-groups" role="group" aria-label="Раздел калькуляторов">${groups.map((group, index) =>
         `<button type="button" data-clinical-group="${index}" aria-pressed="${index === groupIndex}">${escape(group.label)}</button>`).join('')}</div>
         <label class="clinical-picker">Калькулятор<select data-clinical-picker>${groups[groupIndex].cards.map(item => option(item.id, item.title, card.id)).join('')}</select></label>
-        <form class="panel clinical-card" data-clinical-form novalidate>
+        <form class="panel clinical-card ui-card ui-clinical-card" data-clinical-form novalidate>
           <div class="clinical-card-heading">
-            <h2 tabindex="-1" data-clinical-title>${escape(card.title)}</h2>
+            <div class="ui-clinical-heading-text">
+              <span class="ui-eyebrow">Клинический калькулятор</span>
+              <h2 tabindex="-1" data-clinical-title>${escape(card.title)}</h2>
+              ${massReadout(card,raw)}
+            </div>
             ${massMarkup(card,raw)}
           </div>
           <p class="subtle">${escape(card.description)}</p>
           ${renderFields(visibleFields(card, raw), raw)}
-          <div class="actions space"><button class="primary" type="submit">Рассчитать</button><button type="button" data-clinical-clear>Очистить</button></div>
+          <div class="actions space clinical-actions"><button class="primary ui-action-primary" type="submit">Рассчитать</button><button type="button" data-clinical-clear>Очистить</button></div>
           <section class="clinical-output" aria-live="polite" aria-atomic="true">${report ? showResult(report) : ''}</section>
           <details class="clinical-sources"><summary>Источники и версия</summary><ul>${card.sources.map(item =>
             `<li><a href="${escape(item.url)}" target="_blank" rel="noopener noreferrer">${escape(item.label)} ↗</a></li>`).join('')}</ul></details>
