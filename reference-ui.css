@@ -1,0 +1,283 @@
+/*
+ * UncleSam UI v3 — methods, medicine references, protocol archive and info.
+ * Screen-scoped presentation; original numerical routines and source text untouched.
+ */
+.ui-methods .ui-method-choice {
+  margin:0;
+  padding:12px 16px;
+  box-shadow:var(--ui-shadow);
+}
+.ui-methods .ui-method-choice label {
+  display:block;
+  font-size:.79rem;
+}
+.ui-methods .ui-method-choice select {
+  height:44px;
+  width:100%;
+  margin-top:6px;
+  font-weight:650;
+}
+.ui-methods > .gas-method,
+.ui-methods > [data-gas-root],
+.ui-methods > [data-epidural],
+.ui-methods > [data-block-root] {
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  max-width:none;
+  min-width:0;
+}
+.ui-methods .gas-method > .panel,
+.ui-methods .block-card,
+.ui-methods .ui-spinal-card {
+  background:var(--ui-surface);
+  border:1px solid var(--ui-border);
+  border-radius:var(--ui-radius-card);
+  box-shadow:var(--ui-shadow);
+  margin:0;
+  padding:16px;
+  min-width:0;
+}
+.ui-methods .gas-method > .panel h2,
+.ui-methods .block-card h2,
+.ui-methods .ui-spinal-card h2 {
+  font-size:1.26rem;
+  line-height:1.25;
+  letter-spacing:-.02em;
+}
+.ui-methods .gas-method > label,
+.ui-methods .gas-method > details {margin-top:0;}
+.ui-methods .gas-method > label select {margin-top:6px;}
+.ui-methods .gas-grid {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+  align-items:end;
+}
+.ui-methods .gas-grid > label {min-width:0;display:flex;flex-direction:column;align-items:stretch;}
+.ui-methods .gas-grid :is(input,select) {height:44px;min-width:0;max-width:100%;margin-top:5px;}
+.ui-methods .result {
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  background:var(--ui-surface-alt);
+  border:1px solid var(--ui-border);
+  padding:12px 14px;
+  margin-top:14px;
+  border-radius:var(--ui-radius-control);
+}
+.ui-methods .result strong {font-size:clamp(1.18rem,4.7vw,1.55rem);line-height:1.35;color:var(--ui-ink);}
+.ui-methods .result small {font-size:.8rem;line-height:1.45;}
+.ui-methods .actions button {min-height:44px;border-radius:var(--ui-radius-control);}
+.ui-methods .actions .primary {background:var(--ui-primary);}
+.ui-methods details {margin-top:12px;}
+.ui-methods details > summary {min-height:44px;font-size:.86rem;}
+.ui-methods .block-entry {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:8px;
+  align-items:end;
+}
+.ui-methods .block-entry .primary {min-width:132px;}
+.ui-methods .block-remove {
+  display:inline-grid;
+  place-items:center;
+  width:44px;
+  height:44px;
+  min-height:44px;
+  padding:0;
+}
+.ui-methods .epidural-fields {min-inline-size:0;}
+.ui-methods .epidural-checkbox {display:flex;align-items:center;gap:8px;}
+.ui-methods .epidural-checkbox input {width:20px;height:20px;min-height:20px;flex:0 0 20px;}
+.ui-methods .gas-journal {margin-top:10px;}
+.ui-methods .patient-reset {margin-top:4px;}
+.ui-methods .ui-spinal-card .gas-grid {margin-top:14px;}
+.ui-drugs {gap:12px;}
+.ui-drugs .drug-sections {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:8px;
+  margin:0;
+}
+.ui-drugs .drug-sections button {
+  min-width:0;
+  min-height:44px;
+  padding:8px 6px;
+  border:1px solid var(--ui-border);
+  border-radius:var(--ui-radius-control);
+  background:var(--ui-surface);
+  color:var(--ui-subtle);
+  font-size:.85rem;
+}
+.ui-drugs .drug-sections button[aria-current="true"] {
+  background:var(--ui-primary-soft);
+  border-color:var(--ui-primary);
+  color:var(--ui-primary);
+  font-weight:700;
+}
+.ui-drugs .preop-search,
+.ui-drugs .ui-drug-list-row,
+.ui-drugs .ui-drug-backup {
+  background:var(--ui-surface);
+  border:1px solid var(--ui-border);
+  border-radius:var(--ui-radius-card);
+  box-shadow:var(--ui-shadow);
+  padding:16px;
+  margin:0;
+  min-width:0;
+}
+.ui-drugs .preop-search > label {font-size:.8rem;}
+.ui-drugs .preop-search input {height:46px;margin-top:7px;}
+.ui-drugs .preop-search > details {border-top:1px solid var(--ui-border);padding-top:4px;}
+.ui-drugs .preop-results {display:grid;gap:6px;margin-top:10px;}
+.ui-drugs .preop-results li {min-width:0;}
+.ui-drugs .preop-results button {
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:3px;
+  min-height:53px;
+  width:100%;
+  background:var(--ui-surface-alt);
+  border:1px solid var(--ui-border);
+  border-radius:var(--ui-radius-control);
+  padding:10px 12px;
+  text-align:left;
+}
+.ui-drugs .preop-results button strong {color:var(--ui-ink);font-size:.91rem;overflow-wrap:anywhere;}
+.ui-drugs .preop-results button small {color:var(--ui-subtle);font-weight:400;line-height:1.35;}
+.ui-drugs .ui-drug-list-heading {
+  margin:2px 0;
+  align-items:center;
+  gap:10px;
+}
+.ui-drugs .ui-drug-list-heading h2 {font-size:1.25rem;letter-spacing:-.02em;}
+.ui-drugs .ui-drug-list-heading .primary {min-height:44px;}
+.ui-drugs .ui-drug-list-row h3 {font-size:1.04rem;letter-spacing:-.01em;}
+.ui-drugs .ui-drug-list-row > .bar {gap:10px;}
+.ui-drugs .ui-drug-list-row .actions {gap:6px;}
+.ui-drugs .ui-drug-list-row .actions button {min-height:44px;font-size:.83rem;}
+.ui-drugs .ui-drug-list-row > .subtle {margin-top:7px;line-height:1.4;}
+.ui-drugs .ui-drug-backup h2 {font-size:1.15rem;}
+.ui-drugs .ui-drug-backup .actions button {min-height:44px;}
+.ui-templates {max-width:1050px;width:100%;}
+.ui-templates .templates-shell {width:100%;max-width:none;margin:0;min-width:0;}
+.ui-templates .templates-heading {margin:0 0 6px;}
+.ui-templates .templates-heading h2 {font-size:1.38rem;letter-spacing:-.025em;}
+.ui-templates .templates-heading .subtle {margin-top:3px;}
+.ui-templates .template-switch {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:7px;
+  margin-bottom:12px;
+}
+.ui-templates .template-switch button {
+  grid-column:auto;
+  min-width:0;
+  min-height:44px;
+  padding:9px 6px;
+  border:1px solid var(--ui-border);
+  border-radius:var(--ui-radius-control);
+  background:var(--ui-surface);
+  color:var(--ui-subtle);
+  font-size:.79rem;
+  overflow-wrap:anywhere;
+  line-height:1.3;
+}
+.ui-templates .template-switch button[aria-pressed="true"] {
+  color:var(--ui-primary);
+  background:var(--ui-primary-soft);
+  border-color:var(--ui-primary);
+}
+.ui-templates .template-consent-subnav button {min-height:44px;border-radius:var(--ui-radius-control);}
+.ui-templates .template-search {margin-top:8px;font-size:.8rem;}
+.ui-templates .template-search input {height:46px;margin-top:6px;}
+.ui-templates .template-count {font-size:.78rem;margin:7px 0 10px;}
+.ui-templates .template-layout {
+  display:grid;
+  grid-template-columns:minmax(210px,310px) minmax(0,1fr);
+  align-items:start;
+  gap:12px;
+}
+.ui-templates .template-list,
+.ui-templates .template-detail {
+  background:var(--ui-surface);
+  border:1px solid var(--ui-border);
+  border-radius:var(--ui-radius-card);
+  box-shadow:var(--ui-shadow);
+}
+.ui-templates .template-list {padding:6px;}
+.ui-templates .template-item {
+  text-align:left;
+  border-radius:var(--ui-radius-control);
+  padding:11px;
+  min-height:59px;
+}
+.ui-templates .template-item[aria-current="true"] {
+  background:var(--ui-primary-soft);
+  border-color:var(--ui-primary);
+}
+.ui-templates .template-item-title {font-size:.89rem;line-height:1.35;color:var(--ui-ink);}
+.ui-templates .template-item-status {font-size:.74rem;color:var(--ui-subtle);}
+.ui-templates .template-detail {padding:17px;}
+.ui-templates .template-detail-heading h3 {font-size:1.18rem;line-height:1.27;}
+.ui-templates .template-detail-head .primary {min-height:44px;}
+.ui-templates .template-text {font-size:.92rem;line-height:1.6;}
+.ui-templates .template-safety {background:var(--ui-surface-alt);border-color:var(--ui-border);}
+.ui-templates .template-quality-warning {background:var(--ui-warn-bg);border-color:var(--ui-warn);}
+.ui-templates .template-provenance {border-color:var(--ui-border);}
+.ui-info .info-page {width:100%;max-width:none;margin:0;gap:12px;}
+.ui-info .info-header {padding:4px 1px 5px;}
+.ui-info .info-symbol {background:var(--ui-primary-soft);border:1px solid var(--ui-primary);color:var(--ui-primary);width:44px;height:44px;}
+.ui-info .info-header h2 {font-size:1.35rem;letter-spacing:-.02em;}
+.ui-info .info-section {
+  background:var(--ui-surface);
+  border:1px solid var(--ui-border);
+  border-radius:var(--ui-radius-card);
+  box-shadow:var(--ui-shadow);
+  padding:16px;
+  margin:0;
+  display:grid;
+  gap:14px;
+}
+.ui-info .info-section > h3 {font-size:1.18rem;}
+.ui-info .info-formula-card {border-top:1px solid var(--ui-border);padding-top:13px;gap:7px;}
+.ui-info .info-formula-card h4 {font-size:1.02rem;line-height:1.32;}
+.ui-info .info-equation {
+  border:1px solid var(--ui-border);
+  background:var(--ui-surface-alt);
+  border-radius:var(--ui-radius-control);
+  color:var(--ui-ink);
+  font-variant-numeric:tabular-nums;
+  padding:11px 12px;
+}
+.ui-info .info-limits {background:var(--ui-surface-alt);border-radius:var(--ui-radius-control);padding:12px;}
+.ui-info .info-extra {border-color:var(--ui-border);}
+.ui-info .info-extra > summary {min-height:44px;color:var(--ui-primary);}
+.ui-info .info-example > div {border-color:var(--ui-border);}
+@media (max-width:680px) {
+  .ui-templates .template-layout {grid-template-columns:minmax(0,1fr);}
+  .ui-templates .template-list {max-height:230px;overflow:auto;}
+  .ui-templates .template-detail-head .primary {width:100%;}
+}
+@media (max-width:480px) {
+  .ui-methods .gas-method > .panel,
+  .ui-methods .block-card,
+  .ui-methods .ui-spinal-card,
+  .ui-drugs .preop-search,
+  .ui-drugs .ui-drug-list-row,
+  .ui-drugs .ui-drug-backup,
+  .ui-info .info-section {padding:12px;}
+  .ui-methods .gas-grid {gap:8px;}
+  .ui-templates .template-switch {grid-template-columns:repeat(2,minmax(0,1fr));}
+  .ui-templates .template-switch button:last-child {grid-column:1/-1;}
+  .ui-templates .template-detail {padding:12px;}
+}
+@media (max-width:360px) {
+  .ui-methods .gas-grid {grid-template-columns:minmax(0,1fr);}
+  .ui-methods .block-entry {grid-template-columns:minmax(0,1fr);}
+  .ui-methods .block-entry .primary {width:100%;}
+  .ui-drugs .ui-drug-list-row > .bar {align-items:flex-start;flex-direction:column;}
+  .ui-info .info-formula-card h4 {font-size:.96rem;}
+}
