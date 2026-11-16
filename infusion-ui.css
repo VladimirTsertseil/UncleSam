@@ -1,0 +1,202 @@
+/*
+ * UncleSam UI v2 — Infusion / maintenance screen.
+ * Uses shared tokens from design-system.css and patient/deck primitives
+ * from induction-ui.css. No clinical formulas are changed by this file.
+ */
+.ui-infusion .deck-toolbar {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  min-height:44px;
+  gap:10px;
+}
+.ui-infusion .deck-header {
+  display:grid;
+  width:min(200px,calc(100% - 108px));
+  grid-template-columns:44px minmax(40px,1fr) 44px;
+  gap:6px;
+  align-items:center;
+}
+.ui-infusion .deck-header p {color:var(--ui-subtle);font-size:.85rem;font-weight:650;font-variant-numeric:tabular-nums;text-align:center}
+.ui-infusion .deck-header button,
+.ui-infusion .deck-tools button {
+  width:44px;
+  height:44px;
+  min-height:44px;
+  padding:0;
+  border:1px solid var(--ui-border);
+  border-radius:var(--ui-radius-control);
+  background:var(--ui-surface);
+  color:var(--ui-primary);
+  font-size:1.4rem;
+}
+.ui-infusion .deck-tools {margin-left:auto;gap:6px}
+.ui-infusion .deck-tools [data-action="add-row"] {background:var(--ui-primary-soft)}
+.ui-infusion .deck-tools [data-action="remove-row"] {color:var(--ui-error)}
+.ui-infusion .deck-header button:disabled {color:var(--ui-subtle)}
+.ui-infusion .deck .ui-infusion-card {margin-top:8px;min-width:0}
+.ui-infusion .ui-infusion-card .card-title {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+}
+.ui-infusion .ui-infusion-card .ui-dose-title {
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+  flex:1 1 auto;
+  min-width:0;
+}
+.ui-infusion .ui-infusion-card .ui-dose-title h2 {
+  color:var(--ui-ink);
+  font-size:1.35rem;
+  line-height:1.15;
+  letter-spacing:-.025em;
+  overflow-wrap:anywhere;
+}
+.ui-infusion .ui-infusion-card .card-title-actions {
+  flex:0 0 auto;
+  display:flex;
+  gap:6px;
+  align-items:center;
+}
+.ui-infusion .ui-infusion-card .card-title-actions .infusion-flip,
+.ui-infusion .ui-infusion-card .mass-disclosure > summary.mass-trigger {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 44px;
+  width:44px;
+  min-width:44px;
+  height:44px;
+  min-height:44px;
+  padding:0;
+  background:var(--ui-surface-alt);
+  border:1px solid var(--ui-border);
+  border-radius:var(--ui-radius-control);
+  color:var(--ui-primary);
+}
+.ui-infusion .ui-infusion-card .ui-dose-mass {display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:5px}
+.ui-infusion .ui-infusion-card .ui-mass-basis {
+  color:var(--ui-subtle);
+  font-size:.78rem;
+  font-weight:650;
+}
+.ui-infusion .ui-infusion-card .ui-dose-inputs {
+  display:grid;
+  grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);
+  align-items:end;
+  gap:8px;
+  margin-top:16px;
+}
+.ui-infusion .ui-infusion-card .ui-dose-inputs .stepper {
+  grid-template-columns:44px minmax(0,1fr) 44px;
+  gap:4px;
+}
+.ui-infusion .ui-infusion-card .ui-dose-inputs :is(input,select,.stepper button) {
+  height:44px;
+  min-height:44px;
+  border-radius:var(--ui-radius-control);
+}
+.ui-infusion .ui-infusion-card .ui-dose-inputs .stepper button {
+  padding:0;
+  background:var(--ui-surface-alt);
+  color:var(--ui-primary);
+  border-color:var(--ui-border);
+  font-size:1.25rem;
+}
+.ui-infusion .ui-infusion-card .ui-dose-inputs .stepper input {font-weight:700}
+.ui-infusion .ui-infusion-card .infusion-preparation {
+  display:grid;
+  gap:10px;
+  padding-top:12px;
+  margin-top:12px;
+  border-top:1px solid var(--ui-border);
+}
+.ui-infusion .ui-infusion-card .mixture-fields {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  gap:8px;
+  align-items:end;
+}
+.ui-infusion .ui-infusion-card .mixture-amount {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 84px;
+  gap:6px;
+  align-items:end;
+}
+.ui-infusion .ui-infusion-card .mixture-fields :is(input,select) {min-width:0;max-width:100%;padding-inline:7px}
+.ui-infusion .ui-infusion-card .ui-infusion-result {
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  gap:5px;
+  margin-top:15px;
+  background:var(--ui-surface-alt);
+  padding:14px;
+  border-color:var(--ui-border);
+}
+.ui-infusion .ui-infusion-result > strong {
+  display:block;
+  margin-top:3px;
+  color:var(--ui-ink);
+  font-size:clamp(1.4rem,5.8vw,1.85rem);
+  line-height:1.22;
+  letter-spacing:-.025em;
+}
+.ui-infusion .ui-infusion-result:not(.has-value) > strong {
+  color:var(--ui-subtle);
+  font-size:.95rem;
+  line-height:1.45;
+  letter-spacing:0;
+  font-weight:600;
+}
+.ui-infusion .ui-infusion-result .ui-infusion-secondary {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:6px 12px;
+  border-top:1px solid var(--ui-border);
+  margin-top:5px;
+  padding-top:9px;
+}
+.ui-infusion .ui-infusion-result .ui-infusion-secondary-label {color:var(--ui-subtle);font-size:.77rem}
+.ui-infusion .ui-infusion-result .ui-infusion-secondary-value {
+  color:var(--ui-ink);
+  font-size:1.04rem;
+  font-weight:750;
+  font-variant-numeric:tabular-nums;
+}
+.ui-infusion .ui-infusion-result small {margin-top:4px;color:var(--ui-subtle)}
+.ui-infusion .ui-infusion-card > details:not(.mass-disclosure) {
+  border-top:1px solid var(--ui-border);
+  padding-top:4px;
+  margin-top:13px;
+}
+.ui-infusion .ui-infusion-card > details:not(.mass-disclosure) > summary {
+  min-height:44px;
+  padding:10px 0;
+  font-size:.85rem;
+  font-weight:650;
+}
+.ui-infusion .deck-actions > button.primary {
+  min-height:44px;
+  width:100%;
+  background:var(--ui-primary);
+  border-radius:var(--ui-radius-control);
+  font-size:1rem;
+}
+@media (max-width:480px) {
+  .ui-infusion .ui-infusion-card .ui-infusion-result {padding:12px}
+  .ui-infusion .ui-infusion-card .card-title {gap:7px}
+  .ui-infusion .ui-infusion-card .card-title-actions {gap:4px}
+}
+@media (max-width:360px) {
+  .ui-infusion .ui-infusion-card .ui-dose-inputs {gap:6px}
+  .ui-infusion .ui-infusion-card .ui-dose-title h2 {font-size:1.2rem}
+  .ui-infusion .ui-infusion-card .mixture-fields:not(.direct-fields) {
+    grid-template-columns:minmax(0,1fr);
+  }
+}
