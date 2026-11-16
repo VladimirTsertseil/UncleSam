@@ -13,6 +13,8 @@
   <link rel="stylesheet" href="./induction-ui.css?v=1">
   <link rel="stylesheet" href="./infusion-ui.css?v=1">
   <link rel="stylesheet" href="./calculators-ui.css?v=1">
+  <link rel="stylesheet" href="./reference-ui.css?v=1">
+  <link rel="stylesheet" href="./navigation-ui.css?v=1">
   <script defer src="./calc.js"></script>
   <script defer src="./body-mass.js?v=induction-audit-1"></script>
   <script defer src="./catalog.js"></script>
@@ -29,7 +31,7 @@
   <script defer src="./consents-data.js?v=1"></script>
   <script defer src="./templates.js?v=5"></script>
   <script defer src="./about.js?v=1"></script>
-  <script defer src="./app.js?v=ui-system-2"></script>
+  <script defer src="./app.js?v=ui-system-3"></script>
 </head>
 <body>
   <header class="top">
@@ -39,13 +41,20 @@
         <h1>Калькулятор анестезии</h1>
       </div>
       <nav aria-label="Разделы" id="nav">
-        <button data-tab="calc" type="button">Индукция</button>
-        <button data-tab="pump" type="button">Инфузии</button>
-        <button data-tab="methods" type="button">Методы</button>
-        <button data-tab="drugs" type="button">Препараты</button>
-        <button data-tab="calculators" type="button">Калькуляторы</button>
-        <button data-tab="templates" type="button">Протоколы</button>
-        <button data-tab="info" class="nav-info-button" type="button" aria-label="О приложении" title="О приложении"><span aria-hidden="true">i</span></button>
+        <div class="nav-main">
+          <button data-tab="calc" type="button">Индукция</button>
+          <button data-tab="pump" type="button">Инфузии</button>
+          <button data-tab="calculators" type="button"><span class="nav-tab-long">Калькуляторы</span><span class="nav-tab-short">Кальк.</span></button>
+        </div>
+        <div class="nav-more-container" data-nav-more>
+          <button type="button" class="nav-more-toggle" data-nav-more-toggle aria-expanded="false" aria-controls="nav-more-list" aria-label="Другие разделы">Ещё <span class="nav-more-chevron" aria-hidden="true">⌄</span></button>
+          <div class="nav-more-list" id="nav-more-list">
+            <button data-tab="methods" type="button">Методы</button>
+            <button data-tab="drugs" type="button">Препараты</button>
+            <button data-tab="templates" type="button">Протоколы</button>
+            <button data-tab="info" class="nav-info-button" type="button" aria-label="О приложении" title="О приложении"><span aria-hidden="true">i</span><b class="nav-info-text">О приложении</b></button>
+          </div>
+        </div>
       </nav>
     </div>
   </header>
