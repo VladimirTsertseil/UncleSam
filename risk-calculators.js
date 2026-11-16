@@ -146,16 +146,60 @@
           score ? 'Выберите профилактику по протоколу с учётом балла, вида анестезии, противопоказаний и плана послеоперационного обезболивания.' : 'При наличии дополнительных факторов риска или тяжёлых последствий рвоты обсудите профилактику по протоколу вмешательства.');
       }
     }, {
-      id: 'crcl', title: 'Клиренс креатинина · Кокрофт–Голт', description: 'Абсолютный клиренс у взрослого при стабильном креатинине.',
-      fields: [age(), sex(), num('weight','Расчётная масса, кг',20,350,{note:'Укажите массу, предусмотренную инструкцией препарата или протоколом.'}),
-        num('cr','Креатинин',0.01,3000), choice('unit','Единица креатинина',[['umol','мкмоль/л'],['mg','мг/дл']], 'umol', ['cr'])],
-      sources: [source('Cockcroft и Gault, 1976 · исходная формула','https://pubmed.ncbi.nlm.nih.gov/1244564/'),source('MHRA, 2019 · выбор показателя для коррекции доз','https://www.gov.uk/drug-safety-update/prescribing-medicines-in-renal-impairment-using-the-appropriate-estimate-of-renal-function-to-avoid-the-risk-of-adverse-drug-reactions')],
+      id: 'crcl', title: 'Клиренс креатинина / рСКФ · функция почек',
+      description: 'Кокрофт–Голт для дозирования лекарств и CKD-EPI 2021 для оценки рСКФ. Масса тела берётся из профиля пациента.',
+      fields: [age(), num('cr','Креатинин крови',0.01,3000),
+        choice('unit','Единица креатинина',[['umol','мкмоль/л'],['mg','мг/дл']],'umol',['cr','baseline48','baseline7']),
+        num('acr','Альбумин/креатинин мочи (ACR), мг/г',0,10000,{optional:true,note:'Необязательно. Категории A1/A2/A3; если лаборатория сообщает мг/ммоль, переведите единицы.'}),
+        num('baseline48','Креатинин ≤48 ч назад (в тех же единицах)',0.01,3000,{optional:true,note:'Необязательно. Динамика для критерия острого повреждения почек по KDIGO.'}),
+        num('baseline7','Креатинин в предшествующие 7 суток (в тех же единицах)',0.01,3000,{optional:true,note:'Необязательно. Отдельный критерий ОПП: повышение в ≥1,5 раза за 7 суток.'})],
+      sources: [
+        source('Cockcroft и Gault, 1976 · исходная формула','https://pubmed.ncbi.nlm.nih.gov/1244564/'),
+        source('NHS SPS · выбор массы и ограничения Кокрофта–Голта','https://sps.nhs.uk/articles/calculating-kidney-function/'),
+        source('National Kidney Foundation · CKD-EPI 2021','https://www.kidney.org/ckd-epi-creatinine-equation-2021'),
+        source('KDIGO, 2024 · классификация G и A','https://kdigo.org/wp-content/uploads/2024/03/KDIGO-2024-CKD-Guideline.pdf')
+      ],
       compute(v) {
         const cr = v.unit === 'umol' ? v.cr / 88.4 : v.cr;
         if (cr < 0.1 || cr > 34) return {error:'Проверьте значение и единицу креатинина.',field:'cr'};
-        const clearance = (140 - v.age) * v.weight * (v.sex === 'female' ? 0.85 : 1) / (72 * cr);
-        return result(`${fmt(clearance)} мл/мин`, `Абсолютный клиренс по Кокрофту–Голту. В формулу подставлена масса ${fmt(v.weight)} кг.`,
-          'Сверьте порог с инструкцией конкретного препарата. При остром повреждении почек, нестабильном креатинине или выраженных особенностях мышечной массы оценка может быть ненадёжной.');
+        const k = v.sex === 'female' ? 0.7 : 0.9;
+        const alpha = v.sex === 'female' ? -0.241 : -0.302;
+        const ratio = cr / k;
+        const egfr = 142 * Math.min(ratio,1) ** alpha * Math.max(ratio,1) ** (-1.2) *
+          0.9938 ** v.age * (v.sex === 'female' ? 1.012 : 1);
+        const g = egfr >= 90 ? 'G1' : egfr >= 60 ? 'G2' : egfr >= 45 ? 'G3a' :
+          egfr >= 30 ? 'G3b' : egfr >= 15 ? 'G4' : 'G5';
+        const gName = {G1:'нормальная или высокая',G2:'незначительно снижена',G3a:'умеренно снижена',
+          G3b:'существенно снижена',G4:'резко снижена',G5:'почечная недостаточность'}[g];
+        const crcl = weight => (140-v.age) * weight * (v.sex === 'female' ? 0.85 : 1) / (72*cr);
+        const clearance = crcl(v.weight);
+        const metrics = [
+          ['рСКФ CKD-EPI 2021',`${fmt(egfr)} мл/мин/1,73 м² · ${g} (${gName})`],
+          ['Клиренс по ФМТ',`${fmt(crcl(v.actualWeight))} мл/мин`],
+          ...(v.idealWeight !== null ? [['Клиренс по ИдМТ',`${fmt(crcl(v.idealWeight))} мл/мин`]] : []),
+          ...(v.adjustedWeight !== null ? [['Клиренс по СкМТ',`${fmt(crcl(v.adjustedWeight))} мл/мин`]] : [])
+        ];
+        let kidneyNote = 'Категория G сама по себе не подтверждает хроническую болезнь почек: нужны изменения ≥3 месяцев и/или маркеры повреждения. При нестабильном креатинине расчётные показатели ненадёжны.';
+        if (v.acr !== undefined) {
+          const a = v.acr < 30 ? 'A1' : v.acr < 300 ? 'A2' : 'A3';
+          metrics.push(['Альбуминурия',`${a} (ACR ${fmt(v.acr)} мг/г)`]);
+          kidneyNote += ' Для категории альбуминурии учитывают повторяемость измерений.';
+        }
+        const acute = [];
+        if (v.baseline48 !== undefined) {
+          const previous = v.unit === 'umol' ? v.baseline48 / 88.4 : v.baseline48;
+          if (cr - previous >= 0.3 - 1e-9) acute.push('Признак ОПП: рост креатинина ≥0,3 мг/дл (≈26,5 мкмоль/л) за ≤48 ч.');
+        }
+        if (v.baseline7 !== undefined) {
+          const previous = v.unit === 'umol' ? v.baseline7 / 88.4 : v.baseline7;
+          if (cr / previous >= 1.5) acute.push('Признак ОПП: рост креатинина в ≥1,5 раза за ≤7 суток.');
+        }
+        if (acute.length) kidneyNote = acute.join(' ') + ' ' + kidneyNote;
+        else if (v.baseline48 !== undefined || v.baseline7 !== undefined)
+          kidneyNote = 'По указанным значениям критерии ОПП на основании креатинина не выявлены; критерии по диурезу не оценены. ' + kidneyNote;
+        return result(`${fmt(clearance)} мл/мин`,
+          `Клиренс по Кокрофту–Голту, выбранная масса ${fmt(v.weight)} кг. рСКФ (${g}) рассчитывается независимо от массы тела.`,
+          `Для дозы лекарства сверьте клиренс и применяемую массу с инструкцией. ${kidneyNote}`,metrics);
       }
     }, {
       id: 'mica', title: 'Gupta MICA · инфаркт или остановка сердца', description: 'Вероятность инфаркта или остановки кровообращения до 30 дней по модели NSQIP 2011.',
