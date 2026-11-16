@@ -398,14 +398,22 @@ nav { margin-top: 12px; }
 }
 .shared-patient .patient-anthropometry > label,
 .shared-patient .patient-anthropometry > label:last-child {
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  justify-content:flex-end;
   grid-column:auto;
   min-width:0;
+  width:100%;
   font-size:.79rem;
   line-height:1.2;
-  white-space:nowrap;
+  white-space:normal;
 }
 .shared-patient .patient-anthropometry :is(input,select) {
+  display:block;
+  box-sizing:border-box;
   width:100%;
+  max-width:100%;
   min-width:0;
   height:44px;
   min-height:44px;
