@@ -312,7 +312,11 @@
     const rule = body.forDrug(row.drug, stage, profile);
     const mode = rowMassMode(row);
     if (mode === 'manual') return number(row.weight);
-    if (profile.actual === null || profile.height === null || !profile.sex) return null;
+    if (profile.actual === null) return null;
+    // Если врач явно выбрал ФМТ, рост и пол для умножения на кг не требуются.
+    if (mode === 'actual') return profile.actual;
+    // Автоподбор при неизвестном росте/поле может ошибочно классифицировать ожирение.
+    if (profile.height === null || !profile.sex) return null;
     return body.choose(profile, mode, rule.mode);
   }
   function calculateDrugRow(row, stage) {
