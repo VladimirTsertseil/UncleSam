@@ -107,7 +107,6 @@
       <span>СкМТ: <b>${massText(p.adjusted)}</b></span>
       <span>ТМТ: <b>${massText(p.lean)}</b></span>
       ${p.bmi !== null ? `<span>Индекс массы тела: <b>${body.fmt(p.bmi)} кг/м²</b></span>` : ''}
-      <small>ИдМТ — Devine (от 152,4 см); СкМТ — ИдМТ + 0,4 × (ФМТ − ИдМТ); ТМТ — Janmahasatian. СкМТ применяют по показаниям, не при любой массе.</small>
     </div>`;
   }
   let selectedMethod = 'gas';
@@ -335,24 +334,35 @@
     const opts = option('recommended',(rule.uncertain ? 'Начальный вариант (не рекомендация): ' : 'Рекомендуемая: ') + rec,mode) +
       body.modes.map(([key,label]) => option(key,label + ' · ' + massText(profile[key]),mode)).join('') +
       option('manual','Ввести массу вручную',mode);
-    return `<div class="mass-widget space" data-mass-widget>
-      ${select('Масса для расчёта дозы','weightMode',opts)}
-      <p class="mass-current">Используется: <b>${mode==='manual' ? 'введённая вручную' : esc(body.labels[selectedMode])} · ${massText(selectedMass)}</b></p>
-      <p class="subtle mass-advice">${esc(rule.note)}</p>
-      ${profile.obese && !rule.uncertain ?
-        `<p class="subtle mass-advice">${link(row.drug === 'remi'
-          ? 'https://rejestry.ezdrowie.gov.pl/api/rpl/medicinal-products/9110/characteristic'
-          : 'https://intensive-care.ru/index.php/acc/article/download/230/2362?inline=1')}</p>` : ''}
-      ${mode === 'manual' ? input('Масса вручную, кг','weight',row.weight,numeric) : ''}
-      ${row.note ? `<p class="subtle mass-advice">${esc(row.note)}</p>` : ''}
-    </div>`;
+    return `<details class="mass-disclosure" data-key="${stage}-${currentIndex()}-mass" data-mass-widget>
+      <summary class="mass-trigger" aria-label="Настроить массу для расчёта дозы" title="Масса для расчёта дозы">
+        <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 3v17M5 6h14M5 6l-3 7h6L5 6ZM19 6l-3 7h6l-3-7ZM8 20h8"/>
+        </svg>
+      </summary>
+      <div class="mass-widget mass-popover">
+        ${select('Масса для расчёта дозы','weightMode',opts)}
+        <p class="mass-current">Используется: <b>${mode==='manual' ? 'введённая вручную' : esc(body.labels[selectedMode])} · ${massText(selectedMass)}</b></p>
+        <p class="subtle mass-advice">${esc(rule.note)}</p>
+        ${profile.obese && !rule.uncertain ?
+          `<p class="subtle mass-advice">${link(row.drug === 'remi'
+            ? 'https://rejestry.ezdrowie.gov.pl/api/rpl/medicinal-products/9110/characteristic'
+            : 'https://intensive-care.ru/index.php/acc/article/download/230/2362?inline=1')}</p>` : ''}
+        ${mode === 'manual' ? input('Масса вручную, кг','weight',row.weight,numeric) : ''}
+        ${row.note ? `<p class="subtle mass-advice">${esc(row.note)}</p>` : ''}
+      </div>
+    </details>`;
   }
   function updatePatientMassView() {
     const summary = main.querySelector('[data-patient-mass-summary]');
     if (summary) summary.innerHTML = massSummary();
     const article = main.querySelector('article[data-stage]');
     const widget = article?.querySelector('[data-mass-widget]');
-    if (widget) widget.outerHTML = massPickerMarkup(rowFrom(article), article.dataset.stage);
+    if (widget) {
+      const wasOpen = widget.open;
+      widget.outerHTML = massPickerMarkup(rowFrom(article), article.dataset.stage);
+      if (wasOpen) article.querySelector('[data-mass-widget]').open = true;
+    }
   }
   function renderRow(row, stage, index) {
     const drug = drugFor(row.drug);
@@ -380,9 +390,12 @@
     return `<article class="row${infusion ? ' infusion-card' : ''}" data-stage="${stage}" data-index="${index}" aria-label="${esc(drug?.name || row.label || 'Строка расчёта')}">
       <div class="card-title">
         <h2>${esc(drug?.name || row.label || 'Выбор препарата')}</h2>
-        ${infusion ? button('⇄','flip-infusion','',row.reverse
-          ? 'class="infusion-flip" aria-label="Ввод дозы" title="Ввод дозы"'
-          : 'class="infusion-flip" aria-label="Ввод скорости в мл/ч" title="Ввод скорости в мл/ч"') : ''}
+        <div class="card-title-actions">
+          ${infusion ? button('⇄','flip-infusion','',row.reverse
+            ? 'class="infusion-flip" aria-label="Ввод дозы" title="Ввод дозы"'
+            : 'class="infusion-flip" aria-label="Ввод скорости в мл/ч" title="Ввод скорости в мл/ч"') : ''}
+          ${weightBased ? massPickerMarkup(row,stage) : ''}
+        </div>
       </div>
       ${!drug && !row.label ? `<div class="space">${drugPicker}</div>` : ''}
       <div class="dose-line space">
@@ -396,7 +409,6 @@
         </div>
         ${select(infusion ? 'Единица дозы' : 'Единица','unit',unitOptions(row.unit, infusion))}
       </div>
-      ${weightBased ? massPickerMarkup(row,stage) : ''}
       ${infusion ? `<div class="infusion-preparation space">
         ${select('Разведение','preparation',preparationOptions)}
         ${row.preparation === 'mix' ? `<div class="mixture-fields">
