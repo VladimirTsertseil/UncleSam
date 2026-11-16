@@ -2,6 +2,7 @@
   'use strict';
   const { units, number, calculate, scales, dimension } = AnesthesiaMath;
   const { fresh, upgrade, blank, plan } = AnesthesiaCatalog;
+  const body = AnesthesiaBodyMass;
   const storageKey = 'anesthesia-calculator-v1';
   const main = document.querySelector('#main');
   const dialog = document.querySelector('#dialog');
@@ -74,6 +75,7 @@
       ['direct','mix'].includes(row.preparation) && mass(row.cUnit) &&
       ['value','concentration','quantity','volume'].every(field => decimal(row[field])) &&
       row.weight === '' && typeof row.reverse === 'boolean' && typeof row.weightRequired === 'boolean' &&
+      (row.weightMode === undefined || ['recommended','actual','ideal','adjusted','lean','manual'].includes(row.weightMode)) &&
       (!row.reverse || units[row.unit].time);
     if (!list(data.scenarios, s => named(s) && string(s.note) && string(s.gas) &&
       Object.hasOwn(methods, s.method) && (!s.source || (string(s.source) && url(s.source))) &&
@@ -93,6 +95,21 @@
   const emptyPlan = () => plan('', '', '', []);
   let draft = clone(database.scenarios[0] || emptyPlan());
   let patientWeight = '';
+  let patientHeight = '';
+  let patientSex = '';
+  const patientProfile = () => body.calculate({weight:patientWeight,height:patientHeight,sex:patientSex});
+  const massText = amount => amount === null || !Number.isFinite(amount) ? '—' : body.fmt(amount) + ' кг';
+  function massSummary() {
+    const p = patientProfile();
+    return `<div class="patient-mass-summary" aria-live="polite">
+      <span>ФМТ: <b>${massText(p.actual)}</b></span>
+      <span>ИдМТ: <b>${massText(p.ideal)}</b></span>
+      <span>СкМТ: <b>${massText(p.adjusted)}</b></span>
+      <span>ТМТ: <b>${massText(p.lean)}</b></span>
+      ${p.bmi !== null ? `<span>Индекс массы тела: <b>${body.fmt(p.bmi)} кг/м²</b></span>` : ''}
+      <small>ИдМТ — Devine (от 152,4 см); СкМТ — ИдМТ + 0,4 × (ФМТ − ИдМТ); ТМТ — Janmahasatian. СкМТ применяют по показаниям, не при любой массе.</small>
+    </div>`;
+  }
   let selectedMethod = 'gas';
   const spinalDefaults = { baricity: '', concentration: '', direction: 'dose', amount: '' };
   let spinal = { ...spinalDefaults };
@@ -150,7 +167,7 @@
     const working = tab === 'calc' || tab === 'pump';
     if (working) main.innerHTML = patientPanel() + renderCalc() + renderPatientReset();
     else if (tab === 'methods') main.innerHTML = renderMethods() + renderPatientReset();
-    else if (tab === 'calculators') main.innerHTML = calculators.markup();
+    else if (tab === 'calculators') main.innerHTML = patientPanel(false) + calculators.markup() + renderPatientReset();
     else if (tab === 'templates') main.innerHTML = templates.markup();
     else main.innerHTML = renderDrugSections();
     if (tab === 'drugs' && drugSection === 'preop') preop.mount();
@@ -177,15 +194,19 @@
     setCard(index);
     render(true);
   }
-  function patientPanel() {
+  function patientPanel(withScenario = true) {
     const scenarioOptions = option('', 'Новый сценарий', draft.id) + database.scenarios
       .map(scenario => option(scenario.id, scenario.name, draft.id)).join('');
     return `<section class="patient-panel shared-patient" aria-label="Текущий пациент">
-      <div class="grid weight-grid">
-        ${select('Сценарий','scenario',scenarioOptions,'global')}
-        ${input('Масса, кг','patientWeight',patientWeight,numeric,'global')}
+      ${withScenario ? `<div class="space">${select('Сценарий','scenario',scenarioOptions,'global')}</div>` : ''}
+      <div class="grid patient-anthropometry">
+        ${input('Фактическая масса, кг','patientWeight',patientWeight,numeric,'global')}
+        ${input('Рост, см','patientHeight',patientHeight,numeric,'global')}
+        ${select('Пол для формул','patientSex',
+          option('', 'Выбрать', patientSex) + option('male','Мужской',patientSex) + option('female','Женский',patientSex),'global')}
       </div>
-      ${renderScenarioTools()}
+      <div data-patient-mass-summary>${massSummary()}</div>
+      ${withScenario ? renderScenarioTools() : ''}
     </section>`;
   }
   function renderPatientReset() {
@@ -285,13 +306,52 @@
       ${draft.method === 'gas' ? input('Анестетик и параметры','gas',draft.gas,' placeholder="Препарат, концентрация или целевая МАК"','global') : ''}
     </div>`;
   }
+  function rowMassMode(row) { return row.weightMode || 'recommended'; }
+  function rowMass(row, stage) {
+    const profile = patientProfile();
+    const rule = body.forDrug(row.drug, stage, profile);
+    const mode = rowMassMode(row);
+    if (mode === 'manual') return number(row.weight);
+    if (profile.actual === null || profile.height === null || !profile.sex) return null;
+    return body.choose(profile, mode, rule.mode);
+  }
+  function calculateDrugRow(row, stage) {
+    const weight = rowMass(row, stage);
+    const manual = rowMassMode(row) === 'manual';
+    // Игнорируем прежнее поле weight, если выбран один из автоматически рассчитываемых видов массы.
+    return calculate({...row,weight:manual ? row.weight : ''}, weight ?? '');
+  }
+  function massPickerMarkup(row,stage) {
+    const profile = patientProfile();
+    const rule = body.forDrug(row.drug,stage,profile);
+    const mode = rowMassMode(row);
+    const selectedMode = mode === 'recommended' ? rule.mode : mode;
+    const selectedMass = rowMass(row,stage);
+    const rec = body.labels[rule.mode] || 'Фактическая (ФМТ)';
+    const opts = option('recommended','Рекомендуемая: ' + rec,mode) +
+      body.modes.map(([key,label]) => option(key,label + ' · ' + massText(profile[key]),mode)).join('') +
+      option('manual','Ввести массу вручную',mode);
+    return `<div class="mass-widget space" data-mass-widget>
+      ${select('Масса для расчёта дозы','weightMode',opts)}
+      <p class="mass-current">Используется: <b>${mode==='manual' ? 'введённая вручную' : esc(body.labels[selectedMode])} · ${massText(selectedMass)}</b></p>
+      <p class="subtle mass-advice">${esc(rule.note)}</p>
+      ${mode === 'manual' ? input('Масса вручную, кг','weight',row.weight,numeric) : ''}
+      ${row.note ? `<p class="subtle mass-advice">${esc(row.note)}</p>` : ''}
+    </div>`;
+  }
+  function updatePatientMassView() {
+    const summary = main.querySelector('[data-patient-mass-summary]');
+    if (summary) summary.innerHTML = massSummary();
+    const article = main.querySelector('article[data-stage]');
+    const widget = article?.querySelector('[data-mass-widget]');
+    if (widget) widget.outerHTML = massPickerMarkup(rowFrom(article), article.dataset.stage);
+  }
   function renderRow(row, stage, index) {
     const drug = drugFor(row.drug);
     const infusion = units[row.unit].time;
     const weightBased = units[row.unit].weight;
     const key = stage + '-' + index;
-    const weightLabel = row.weightRequired ? 'Расчётная масса, кг · требуется' : 'Расчётная масса, кг · по желанию';
-    const drugPicker = button(drug?.name || 'Выбрать препарат','open-drug-picker','',
+     const drugPicker = button(drug?.name || 'Выбрать препарат','open-drug-picker','',
       'class="drug-picker-trigger" aria-haspopup="dialog"');
     const mixtures = infusion ? (drug?.mixtures ?? []).filter(m => dimension(m.unit) === dimension(units[row.unit].mass)) : [];
     const concentrations = (drug?.concentrations ?? []).filter(c => dimension(c.unit) === dimension(units[row.unit].mass));
@@ -306,7 +366,6 @@
       option('direct','Концентрация на мл',row.preparation);
     const concentrationUnits = massOptions(row.cUnit, Object.keys(scales).filter(unit =>
       dimension(unit) === dimension(units[row.unit].mass)));
-    const showWeight = weightBased && row.weightRequired;
     const concentrationName = row.preparation === 'mix' ? 'Единица количества' : 'Единица концентрации';
     const arrows = `<button type="button" data-action="up" aria-label="Выше" ${index === 0 ? 'disabled' : ''}>↑</button>
       <button type="button" data-action="down" aria-label="Ниже" ${index === draft[stage].length-1 ? 'disabled' : ''}>↓</button>`;
@@ -329,8 +388,7 @@
         </div>
         ${select(infusion ? 'Единица дозы' : 'Единица','unit',unitOptions(row.unit, infusion))}
       </div>
-      ${showWeight ? `<div class="space">${input('Расчётная масса, кг','weight',row.weight,numeric)}
-        ${row.note ? `<p class="subtle">${esc(row.note)}</p>` : ''}</div>` : ''}
+      ${weightBased ? massPickerMarkup(row,stage) : ''}
       ${infusion ? `<div class="infusion-preparation space">
         ${select('Разведение','preparation',preparationOptions)}
         ${row.preparation === 'mix' ? `<div class="mixture-fields">
@@ -363,11 +421,7 @@
         ${!infusion && row.preparation === 'mix' ? input('Количество препарата','quantity',row.quantity,numeric) +
           input('Итоговый объём раствора, мл','volume',row.volume,numeric) : (!infusion || quickConcentration)
             ? input('Концентрация, ' + row.cUnit + '/мл','concentration',row.concentration,numeric) : ''}
-        ${!showWeight && weightBased ? input(weightLabel,'weight',row.weight,numeric) : ''}
-        ${select('Правило расчётной массы','weightRequired',
-          option('false','Фактическая или указанная',String(row.weightRequired)) +
-          option('true','Всегда указывать отдельно',String(row.weightRequired)))}
-        ${input('Примечание к строке','note',row.note)}
+         ${input('Примечание к строке','note',row.note)}
         ${!drug ? input('Название препарата вручную','label',row.label) : ''}
         </div>
         <div class="actions space">${infusion && drug && row.preparation === 'mix' ? button('Сохранить разведение','save-row-mixture') : ''}${arrows}${stage === 'induction' ? button('Убрать','remove-row','','class="danger"') : ''}</div>
@@ -376,13 +430,13 @@
   }
   function describe(row) {
     const unit = units[row.unit];
-    const result = calculate(row, row.weightRequired ? '' : patientWeight);
+    const result = calculateDrugRow(row, currentStage());
     const { value, weight, rawConcentration, concentration, amount, answer } = result;
     const c = concentration && Number.isFinite(concentration)
       ? fmt(rawConcentration) + ' ' + row.cUnit + '/мл' : '';
     const context = [unit.weight && weight ? fmt(weight) + ' кг' : '', c].filter(Boolean).join(' · ');
     if (!value) return { answer: 'Введите ' + (row.reverse ? 'скорость насоса' : 'дозу'), context };
-    if (unit.weight && !weight) return { answer: 'Введите ' + (row.weightRequired || row.weight.trim() ? 'расчётную' : 'фактическую') + ' массу', context };
+    if (unit.weight && !weight) return { answer: 'Укажите фактическую массу, рост и пол или выберите ручной ввод массы', context };
     const missingConcentration = row.preparation === 'mix'
       ? 'Укажите количество препарата и итоговый объём'
       : 'Укажите концентрацию для расчёта объёма';
@@ -684,8 +738,17 @@
     }
   });
   main.addEventListener('input', event => {
-    if (tab === 'calculators' || tab === 'templates') return;
     const el = event.target;
+    if (el.dataset.global === 'patientWeight' || el.dataset.global === 'patientHeight') {
+      if (el.dataset.global === 'patientWeight') patientWeight = el.value;
+      else patientHeight = el.value;
+      updatePatientMassView();
+      if (tab === 'calculators') calculators.patientChanged();
+      else if (tab === 'calc' || tab === 'pump') updateResults();
+      else if (tab === 'methods' && selectedMethod === 'block') nerveBlock.refresh(main, patientWeight);
+      return;
+    }
+    if (tab === 'calculators' || tab === 'templates') return;
     if (el.id === 'preop-query') {
       preop.input(el.value);
       return;
@@ -705,18 +768,24 @@
     }
     if (el.tagName === 'SELECT' || el.type === 'file') return;
     const global = el.dataset.global;
-    if (global === 'patientWeight') {
-      patientWeight = el.value;
-      updateResults();
-    } else if (global) {
+    if (global) {
       draft[global] = el.value;
       dirty = true;
       updateResults();
     } else handleField(el);
   });
   main.addEventListener('change', async event => {
-    if (tab === 'calculators' || tab === 'templates') return;
     const el = event.target;
+    if (el.dataset.global === 'patientSex') {
+      patientSex = el.value;
+      render(true);
+      return;
+    }
+    if (el.dataset.global === 'patientWeight' || el.dataset.global === 'patientHeight') {
+      render(true);
+      return;
+    }
+    if (tab === 'calculators' || tab === 'templates') return;
     if (tab === 'methods') {
       if (el.dataset.methods === 'method') {
         selectedMethod = el.value;
@@ -862,7 +931,7 @@
         break;
       case 'flip-infusion': {
         if (!row || !units[row.unit].time) break;
-        const { answer } = calculate(row, row.weightRequired ? '' : patientWeight);
+        const { answer } = calculateDrugRow(row, currentStage());
         row.reverse = !row.reverse;
         row.value = Number.isFinite(answer) && answer > 0
           ? new Intl.NumberFormat('ru-RU',{ useGrouping:false, maximumSignificantDigits:15 }).format(answer) : '';
@@ -903,7 +972,7 @@
         break;
       }
       case 'new-patient':
-        if (dirty || patientWeight || inhalation.hasData() || epidural.hasData() || nerveBlock.hasData() || calculators.hasData() ||
+        if (dirty || patientWeight || patientHeight || patientSex || inhalation.hasData() || epidural.hasData() || nerveBlock.hasData() || calculators.hasData() ||
             spinal.concentration || spinal.amount || spinal.baricity) {
           promptDialog('Начать новый расчёт?',
             '<p class="subtle space">Данные пациента, текущие расчёты и журнал расхода будут сброшены.</p>',
@@ -914,6 +983,8 @@
       case 'confirm-new-patient':
         dialog.close();
         patientWeight = '';
+        patientHeight = '';
+        patientSex = '';
         inhalation.reset();
         epidural.reset();
         nerveBlock.reset();
@@ -1052,6 +1123,8 @@
         if (!committed) return;
         pendingImport = null;
         patientWeight = '';
+        patientHeight = '';
+        patientSex = '';
         tab = 'calc';
         dialog.close();
         loadPlan(database.scenarios[0]?.id);
