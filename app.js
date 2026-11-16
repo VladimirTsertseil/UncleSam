@@ -15,7 +15,7 @@
   const calculators = AnesthesiaCalculators.create(main, [
     { label: 'Предоперационные', cards: AnesthesiaRiskCalculators },
     { label: 'Критические состояния', cards: AnesthesiaCriticalCalculators }
-  ]);
+  ], () => patientProfile());
   const templates = AnesthesiaTemplates.create(main);
   const uid = () => globalThis.crypto?.randomUUID?.() || Date.now().toString(36) + Math.random().toString(36).slice(2);
   const clone = value => structuredClone(value);
