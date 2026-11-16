@@ -171,7 +171,8 @@
       else el.removeAttribute('aria-current');
     }
     const working = tab === 'calc' || tab === 'pump';
-    if (working) main.innerHTML = patientPanel() + renderCalc() + renderPatientReset();
+    if (working) main.innerHTML = `<div class="ui-workspace ${tab === 'calc' ? 'ui-induction' : 'ui-infusion'}">`
+      + patientPanel() + renderCalc() + renderPatientReset() + '</div>';
     else if (tab === 'methods') main.innerHTML = renderMethods() + renderPatientReset();
     else if (tab === 'calculators') main.innerHTML = patientPanel(false) + calculators.markup() + renderPatientReset();
     else if (tab === 'templates') main.innerHTML = templates.markup();
@@ -209,14 +210,17 @@
       patientHeight ? patientHeight.replace(',', '.') + ' см' : '',
       patientSex === 'male' ? 'Муж.' : patientSex === 'female' ? 'Жен.' : ''
     ].filter(Boolean).join(' · ');
-    return `<section class="patient-panel shared-patient${patientCollapsed ? ' is-collapsed' : ''}" aria-label="Текущий пациент">
+    return `<section class="patient-panel shared-patient ui-card ui-patient-card${patientCollapsed ? ' is-collapsed' : ''}" aria-label="Текущий пациент">
       <div class="patient-panel-heading">
         <strong>${patientCollapsed ? 'Пациент' : 'Данные пациента'}</strong>
         ${patientCollapsed && summary ? `<span class="patient-panel-preview">${esc(summary)}</span>` : ''}
         ${button(patientCollapsed ? '+' : '−','toggle-patient','',`class="patient-collapse" aria-expanded="${!patientCollapsed}" aria-label="${patientCollapsed ? 'Развернуть данные пациента' : 'Свернуть данные пациента'}" title="${patientCollapsed ? 'Развернуть' : 'Свернуть'}"`)}
       </div>
       ${patientCollapsed ? '' : `
-        ${withScenario ? `<div class="patient-scenario-row">${select('Сценарий','scenario',scenarioOptions,'global')}</div>` : ''}
+        ${withScenario ? `<div class="ui-scenario-controls">
+          <div class="patient-scenario-row">${select('Сценарий','scenario',scenarioOptions,'global')}</div>
+          ${renderScenarioTools()}
+        </div>` : ''}
         <div class="grid patient-anthropometry">
           ${input('Вес, кг','patientWeight',patientWeight,numeric,'global')}
           ${input('Рост, см','patientHeight',patientHeight,numeric,'global')}
@@ -224,7 +228,6 @@
             option('', '—', patientSex) + option('male','Муж.',patientSex) + option('female','Жен.',patientSex),'global')}
         </div>
         <div data-patient-mass-summary>${massSummary()}</div>
-        ${withScenario ? renderScenarioTools() : ''}
       `}
     </section>`;
   }
@@ -277,7 +280,7 @@
     const maintenance = stage === 'maintenance';
     const card = deck[index];
     return `
-      <section class="deck${maintenance ? ' infusion-deck' : ''}" aria-label="Карточки препаратов" data-deck>
+      <section class="deck ui-deck${maintenance ? ' infusion-deck' : ''}" aria-label="Карточки препаратов" data-deck>
         ${card || maintenance ? `<div class="deck-toolbar">
           ${card ? `<div class="deck-header">
             <button type="button" data-action="previous-card" aria-label="Предыдущий препарат" ${index === 0 ? 'disabled' : ''}>‹</button>
@@ -344,6 +347,13 @@
     // Игнорируем прежнее поле weight, если выбран один из автоматически рассчитываемых видов массы.
     return calculate({...row,weight:manual ? row.weight : ''}, weight ?? '');
   }
+  function massReadoutText(row, stage) {
+    const mode = rowMassMode(row);
+    const selected = mode === 'recommended'
+      ? body.forDrug(row.drug,stage,patientProfile()).mode : mode;
+    const names = {actual:'ФМТ',ideal:'ИдМТ',adjusted:'СкМТ',lean:'ТМТ',manual:'Вручную'};
+    return (names[selected] || 'Масса') + ' · ' + massText(rowMass(row,stage));
+  }
   function massPickerMarkup(row,stage) {
     const profile = patientProfile();
     const rule = body.forDrug(row.drug,stage,profile);
@@ -387,6 +397,8 @@
       widget.outerHTML = massPickerMarkup(rowFrom(article), article.dataset.stage);
       if (wasOpen) article.querySelector('[data-mass-widget]').open = true;
     }
+    const readout = article?.querySelector('[data-active-mass]');
+    if (readout) readout.textContent = massReadoutText(rowFrom(article),article.dataset.stage);
   }
   function renderRow(row, stage, index) {
     const drug = drugFor(row.drug);
@@ -411,9 +423,16 @@
     const concentrationName = row.preparation === 'mix' ? 'Единица количества' : 'Единица концентрации';
     const arrows = `<button type="button" data-action="up" aria-label="Выше" ${index === 0 ? 'disabled' : ''}>↑</button>
       <button type="button" data-action="down" aria-label="Ниже" ${index === draft[stage].length-1 ? 'disabled' : ''}>↓</button>`;
-    return `<article class="row${infusion ? ' infusion-card' : ''}" data-stage="${stage}" data-index="${index}" aria-label="${esc(drug?.name || row.label || 'Строка расчёта')}">
-      <div class="card-title">
-        <h2>${esc(drug?.name || row.label || 'Выбор препарата')}</h2>
+    return `<article class="row${infusion ? ' infusion-card' : ' ui-card ui-dose-card'}" data-stage="${stage}" data-index="${index}" aria-label="${esc(drug?.name || row.label || 'Строка расчёта')}">
+      <div class="card-title${infusion ? '' : ' ui-dose-heading'}">
+        ${infusion ? `<h2>${esc(drug?.name || row.label || 'Выбор препарата')}</h2>`
+          : `<div class="ui-dose-title">
+            <span class="ui-eyebrow">Индукция · внутривенно</span>
+            <h2>${esc(drug?.name || row.label || 'Выбор препарата')}</h2>
+            ${weightBased ? `<div class="ui-dose-mass">
+              <span class="ui-pill ui-mass-basis" data-active-mass>${esc(massReadoutText(row,stage))}</span>
+            </div>` : ''}
+          </div>`}
         <div class="card-title-actions">
           ${infusion ? button('⇄','flip-infusion','',row.reverse
             ? 'class="infusion-flip" aria-label="Ввод дозы" title="Ввод дозы"'
@@ -422,7 +441,7 @@
         </div>
       </div>
       ${!drug && !row.label ? `<div class="space">${drugPicker}</div>` : ''}
-      <div class="dose-line space">
+      <div class="dose-line space${infusion ? '' : ' ui-dose-inputs'}">
         <div>
           <label for="card-dose">${doseLabel}</label>
           <div class="stepper">
@@ -448,7 +467,16 @@
       </div>` : quickConcentration ? `<div class="quick-concentration space">${quickConcentration}</div>` : ''}
       ${mixtures.length ? `<div class="quick-concentration space">${select('Сохранённое разведение','mixture',option('', 'Выбрать', '') +
         mixtures.map((m,i) => option(String(i), m.quantity + ' ' + m.unit + ' / ' + m.volume + ' мл', '')).join(''))}</div>` : ''}
-      <div class="result"><strong data-answer></strong><small data-math hidden></small></div>
+      ${infusion ? `<div class="result"><strong data-answer></strong><small data-math hidden></small></div>`
+        : `<div class="result ui-result-panel ui-dose-result" aria-live="polite">
+          <span class="ui-eyebrow">Расчётная доза</span>
+          <strong data-answer></strong>
+          <div class="ui-dose-volume" data-dose-volume-row hidden>
+            <span class="ui-dose-volume-label">Объём при выбранной концентрации</span>
+            <span class="ui-dose-volume-value" data-dose-volume></span>
+          </div>
+          <small data-math hidden></small>
+        </div>`}
       <p class="dose-safety-note" data-dose-safety role="note" hidden></p>
       ${doses.length ? `<details data-key="${key}-doses"><summary>Справочные и сохранённые дозы</summary>
         ${doses.map(d => `<div class="reference"${d.id === row.preset ? ' aria-current="true"' : ''}>
@@ -521,6 +549,8 @@
       (row.unit.endsWith('/мин') ? ' × 60 мин/ч' : '');
     return {
       answer: prettyAmount + (c ? ' → ' + fmt(answer) + ' мл' + (unit.time ? '/ч' : '') : ''),
+      primary: prettyAmount,
+      volume: c ? fmt(answer) + ' мл' + (unit.time ? '/ч' : '') : '',
       context: expression + (c ? ' · концентрация ' + c : ' · ' + missingConcentration),
       ready: true
     };
@@ -533,8 +563,17 @@
       const current = number(row.value);
       const step = doseStep(row);
       const answer = article.querySelector('[data-answer]');
-      answer.textContent = result.answer;
+      answer.textContent = tab === 'calc' && result.ready && result.primary
+        ? result.primary : result.answer;
       answer.parentElement.classList.toggle('has-value', Boolean(result.ready));
+      const volumeRow = article.querySelector('[data-dose-volume-row]');
+      if (volumeRow) {
+        volumeRow.hidden = !(result.ready && result.volume);
+        const volumeValue = volumeRow.querySelector('[data-dose-volume]');
+        if (volumeValue) volumeValue.textContent = result.ready ? result.volume || '' : '';
+      }
+      const readout = article.querySelector('[data-active-mass]');
+      if (readout) readout.textContent = massReadoutText(row,currentStage());
       article.querySelector('[data-math]').textContent = result.context;
       article.querySelector('[data-math]').hidden = !result.ready || !calculateDrugRow(row, currentStage()).rawConcentration;
       const safety = article.querySelector('[data-dose-safety]');
