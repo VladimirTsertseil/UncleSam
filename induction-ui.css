@@ -202,6 +202,14 @@
   overflow-wrap:anywhere;
 }
 .ui-induction .ui-dose-heading .card-title-actions {flex:0 0 auto;}
+.ui-induction .ui-dose-card .mass-disclosure > summary.mass-trigger {
+  width:var(--ui-target);
+  min-width:var(--ui-target);
+  height:var(--ui-target);
+  min-height:var(--ui-target);
+  padding:0;
+  border-radius:var(--ui-radius-control);
+}
 .ui-induction .ui-dose-mass {
   display:flex;
   gap:6px;
