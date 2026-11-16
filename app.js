@@ -332,13 +332,17 @@
     const selectedMode = mode === 'recommended' ? rule.mode : mode;
     const selectedMass = rowMass(row,stage);
     const rec = body.labels[rule.mode] || 'Фактическая (ФМТ)';
-    const opts = option('recommended','Рекомендуемая: ' + rec,mode) +
+    const opts = option('recommended',(rule.uncertain ? 'Начальный вариант (не рекомендация): ' : 'Рекомендуемая: ') + rec,mode) +
       body.modes.map(([key,label]) => option(key,label + ' · ' + massText(profile[key]),mode)).join('') +
       option('manual','Ввести массу вручную',mode);
     return `<div class="mass-widget space" data-mass-widget>
       ${select('Масса для расчёта дозы','weightMode',opts)}
       <p class="mass-current">Используется: <b>${mode==='manual' ? 'введённая вручную' : esc(body.labels[selectedMode])} · ${massText(selectedMass)}</b></p>
       <p class="subtle mass-advice">${esc(rule.note)}</p>
+      ${profile.obese && !rule.uncertain ?
+        `<p class="subtle mass-advice">${link(row.drug === 'remi'
+          ? 'https://rejestry.ezdrowie.gov.pl/api/rpl/medicinal-products/9110/characteristic'
+          : 'https://intensive-care.ru/index.php/acc/article/download/230/2362?inline=1')}</p>` : ''}
       ${mode === 'manual' ? input('Масса вручную, кг','weight',row.weight,numeric) : ''}
       ${row.note ? `<p class="subtle mass-advice">${esc(row.note)}</p>` : ''}
     </div>`;
