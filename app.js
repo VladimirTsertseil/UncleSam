@@ -364,6 +364,10 @@
         ${select('Масса для расчёта дозы','weightMode',opts)}
         <p class="mass-current">Используется: <b>${mode==='manual' ? 'введённая вручную' : esc(body.labels[selectedMode])} · ${massText(selectedMass)}</b></p>
         <p class="subtle mass-advice">${esc(rule.note)}</p>
+        ${profile.obese && row.drug === 'roc' && (row.preset === 'roc-rsi' || draft.id === 'rsi') ?
+          `<p class="subtle mass-advice">При быстрой последовательной индукции у пациентов с ожирением руководство SOBA (2025) приводит отдельный пример: 1,2 мг/кг по тощей массе, чтобы обеспечить быстрое наступление блока. Это не автоматическая замена режима по инструкции Эсмерона. ${link('https://doi.org/10.1111/anae.16647')}</p>` : ''}
+        ${profile.obese && row.drug === 'roc' ?
+          `<p class="subtle mass-advice">В этом приложении идеальная масса вычисляется по Devine; в методических рекомендациях ФАР (2021) используется упрощённая формула по росту. Значения могут отличаться.</p>` : ''}
         ${profile.obese && !rule.uncertain ?
           `<p class="subtle mass-advice">${link(row.drug === 'remi'
             ? 'https://rejestry.ezdrowie.gov.pl/api/rpl/medicinal-products/9110/characteristic'
@@ -445,6 +449,7 @@
       ${mixtures.length ? `<div class="quick-concentration space">${select('Сохранённое разведение','mixture',option('', 'Выбрать', '') +
         mixtures.map((m,i) => option(String(i), m.quantity + ' ' + m.unit + ' / ' + m.volume + ' мл', '')).join(''))}</div>` : ''}
       <div class="result"><strong data-answer></strong><small data-math hidden></small></div>
+      <p class="dose-safety-note" data-dose-safety role="note" hidden></p>
       ${doses.length ? `<details data-key="${key}-doses"><summary>Справочные и сохранённые дозы</summary>
         ${doses.map(d => `<div class="reference"${d.id === row.preset ? ' aria-current="true"' : ''}>
           <p><b>${esc(d.name)}</b>${d.value ? ' · ' + esc(d.value + ' ' + d.unit) : ''}</p>
@@ -467,6 +472,18 @@
         <div class="actions space">${infusion && drug && row.preparation === 'mix' ? button('Сохранить разведение','save-row-mixture') : ''}${arrows}${stage === 'induction' ? button('Убрать','remove-row','','class="danger"') : ''}</div>
       </details>
     </article>`;
+  }
+  function doseSafetyNotice(row, stage) {
+    if (stage === 'induction' && row.drug === 'fent') {
+      const result = calculateDrugRow(row, stage);
+      const amountMcg = Number.isFinite(result.amount)
+        ? result.amount * (units[row.unit].mass === 'мг' ? 1000 : 1) : null;
+      // Российская инструкция описывает типовую вводную анестезию 100–200 мкг,
+      // а не абсолютный предел фентанила для всех хирургических ситуаций.
+      if (amountMcg !== null && amountMcg > 200)
+        return 'Внимание: сумма превышает 200 мкг. Российская инструкция Эндофарм для вводной анестезии описывает 100–200 мкг; другие режимы могут отличаться. Проверьте выбранное показание и обоснование дозы.';
+    }
+    return '';
   }
   function describe(row) {
     const unit = units[row.unit];
@@ -513,7 +530,13 @@
       answer.textContent = result.answer;
       answer.parentElement.classList.toggle('has-value', Boolean(result.ready));
       article.querySelector('[data-math]').textContent = result.context;
-      article.querySelector('[data-math]').hidden = !result.ready || !calculate(row, patientWeight).rawConcentration;
+      article.querySelector('[data-math]').hidden = !result.ready || !calculateDrugRow(row, currentStage()).rawConcentration;
+      const safety = article.querySelector('[data-dose-safety]');
+      if (safety) {
+        const notice = doseSafetyNotice(row, currentStage());
+        safety.textContent = notice;
+        safety.hidden = !notice;
+      }
       article.querySelector('[data-action="step-dose"][value="-1"]').disabled = !current || current <= step;
       const concentrationSelect = article.querySelector('[data-field="savedConcentration"]');
       if (concentrationSelect) {
@@ -630,6 +653,8 @@
           }
         }
         row.weight = '';
+        // Не переносим в шаблон персональную ручную массу без её значения.
+        if (row.weightMode === 'manual') row.weightMode = 'recommended';
       }
     }
     const next = clone(database);
@@ -1043,7 +1068,7 @@
       case 'save-as':
         promptDialog('Сохранить как сценарий',
           `<label class="space">Название<input id="copy-name" value="${esc(draft.name ? draft.name + ' — копия' : '')}" maxlength="120" autofocus></label>
-           <p class="subtle space">Расчётная и фактическая масса пациента при сохранении очищаются.</p>`,
+           <p class="subtle space">Масса пациента при сохранении очищается; ручной выбор массы сбрасывается на рекомендованный, чтобы шаблон не использовал неизвестный вес.</p>`,
           button('Сохранить','confirm-copy','','class="primary"'));
         break;
       case 'confirm-copy': savePlan(true, dialog.querySelector('#copy-name').value); break;
