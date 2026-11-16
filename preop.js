@@ -81,9 +81,9 @@
     }
     function markup() {
       return `<section class="panel preop-search space">
-        <label>Название препарата
+        <label>Поиск препарата
           <input id="preop-query" type="search" autocomplete="off" autocapitalize="none" spellcheck="false"
-            placeholder="Например, Эликвис или апиксабан" value="${escape(query)}">
+            placeholder="МНН или торговое название" value="${escape(query)}">
         </label>
         <p class="subtle space" id="preop-status" role="status"></p>
         <button type="button" data-action="preop-retry" class="space" hidden>Повторить загрузку</button>
@@ -107,9 +107,10 @@
       document.querySelector('[data-action="preop-browse"]').hidden = !archive;
       const limit = 40;
       status.textContent = failure ? 'Не удалось загрузить базу.' : !archive ? 'Загрузка базы…'
-        : value.length < 2 ? 'Введи хотя бы две буквы МНН или торгового названия.'
+        : value.length === 0 ? '' : value.length < 2 ? 'Введите не менее двух букв.'
         : !found.length ? 'Совпадений нет. Проверь написание или введи часть названия.'
         : found.length > limit ? `Показаны первые ${limit} из ${found.length}. Уточни название.` : `Найдено: ${found.length}`;
+      status.hidden = !status.textContent;
       results.innerHTML = found.slice(0, limit).map(({ drug, title, key }) => {
         const aliases = [drug.inn_ru, ...drug.trade_names_ru, ...drug.search_aliases_ru, ...drug.ingredients_ru];
         const matched = aliases.find(alias => normalize(alias) === key && normalize(alias) !== normalize(drug.inn_ru));
