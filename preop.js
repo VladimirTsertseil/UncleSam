@@ -85,7 +85,7 @@
           <input id="preop-query" type="search" autocomplete="off" autocapitalize="none" spellcheck="false"
             placeholder="МНН или торговое название" value="${escape(query)}">
         </label>
-        <p class="subtle space" id="preop-status" role="status"></p>
+        <p class="subtle space" id="preop-status" role="status" hidden></p>
         <button type="button" data-action="preop-retry" class="space" hidden>Повторить загрузку</button>
         <button type="button" data-action="preop-browse" class="space" hidden>Все препараты</button>
         <ul class="preop-results" id="preop-results"></ul>
