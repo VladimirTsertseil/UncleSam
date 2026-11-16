@@ -1,0 +1,319 @@
+/*
+ * UncleSam UI v1 — induction screen.
+ * Only selectors underneath .ui-induction or .ui-workspace are affected.
+ * Pump / calculator redesign will reuse tokens and primitives separately.
+ */
+.ui-workspace .ui-patient-card {
+  margin: 0;
+  padding: 14px 16px;
+  border-color: var(--ui-border);
+  border-radius: var(--ui-radius-card);
+  box-shadow: var(--ui-shadow);
+  position: relative;
+  z-index: 2;
+}
+.ui-workspace .ui-patient-card .patient-panel-heading {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-height: var(--ui-target);
+  margin-bottom: 8px;
+}
+.ui-workspace .ui-patient-card .patient-panel-heading > strong {
+  color: var(--ui-ink);
+  font-size: .93rem;
+  font-weight: 750;
+  letter-spacing: -.01em;
+}
+.ui-workspace .ui-patient-card .patient-panel-preview { font-size: .8rem; }
+.ui-workspace .ui-patient-card .patient-collapse {
+  flex: 0 0 var(--ui-target);
+  width: var(--ui-target);
+  height: var(--ui-target);
+  min-height: var(--ui-target);
+  margin-left: auto;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-surface-alt);
+  color: var(--ui-primary);
+  font-size: 1.6rem;
+}
+.ui-workspace .ui-patient-card.is-collapsed {
+  padding-block: 8px;
+}
+.ui-workspace .ui-patient-card.is-collapsed .patient-panel-heading {margin:0;}
+.ui-workspace .ui-scenario-controls {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0,1fr) var(--ui-target);
+  align-items: end;
+  gap: 8px;
+  z-index: 4;
+  margin-top: 6px;
+}
+.ui-workspace .ui-patient-card .patient-scenario-row {
+  padding: 0;
+  min-width: 0;
+}
+.ui-workspace .ui-patient-card .patient-scenario-row select {
+  height: var(--ui-target);
+  margin-top: 5px;
+}
+.ui-workspace .ui-patient-card .scenario-tools {
+  position: static;
+  margin: 0;
+  padding: 0;
+  align-self: end;
+}
+.ui-workspace .ui-patient-card .scenario-tools > summary {
+  position: static;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inset: auto;
+  top: auto;
+  right: auto;
+  margin: 0;
+  padding: 0;
+  width: var(--ui-target);
+  height: var(--ui-target);
+  min-height: var(--ui-target);
+  background: var(--ui-surface-alt);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-control);
+}
+.ui-workspace .ui-patient-card .scenario-tools > summary:hover,
+.ui-workspace .ui-patient-card .patient-collapse:hover { background:var(--ui-primary-soft); }
+.ui-workspace .ui-patient-card .scenario-tools[open] > summary {
+  border-color: var(--ui-primary);
+}
+.ui-workspace .ui-patient-card .scenario-editor {
+  position: absolute;
+  z-index: 60;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(500px,calc(100vw - 42px));
+  max-height: min(75dvh,620px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin: 0;
+  padding: 14px;
+}
+.ui-workspace .ui-patient-card .patient-anthropometry,
+.ui-workspace .ui-patient-card .grid.patient-anthropometry {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) minmax(0,1fr) minmax(0,.86fr);
+  gap: 8px;
+  align-items: end;
+  margin-top: 10px;
+}
+.ui-workspace .ui-patient-card .patient-anthropometry > label,
+.ui-workspace .ui-patient-card .patient-anthropometry > label:last-child {
+  min-width: 0;
+  width: 100%;
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  justify-content:end;
+  grid-column:auto;
+  font-size: .78rem;
+  line-height: 1.25;
+}
+.ui-workspace .ui-patient-card .patient-anthropometry :is(input,select) {
+  display:block;
+  box-sizing:border-box;
+  margin-top:5px;
+  height:var(--ui-target);
+  min-height:var(--ui-target);
+  width:100%;
+  min-width:0;
+  max-width:100%;
+  padding:8px;
+  border-radius:var(--ui-radius-control);
+  font-size:16px;
+}
+.ui-workspace .ui-patient-card .patient-mass-summary { margin-top:10px; }
+.ui-workspace .ui-patient-card .patient-mass-strip {
+  display: grid;
+  grid-template-columns: repeat(4,minmax(0,1fr));
+  gap:6px;
+}
+.ui-workspace .patient-mass-item {
+  background:var(--ui-surface-alt);
+  border:1px solid var(--ui-border);
+  border-radius:var(--ui-radius-small);
+  padding:7px 4px;
+}
+.ui-workspace .patient-mass-name {font-size:.7rem;color:var(--ui-subtle);}
+.ui-workspace .patient-mass-value {font-size:.86rem;color:var(--ui-ink);font-weight:750;}
+.ui-workspace .patient-bmi {margin-top:6px;font-size:.76rem;color:var(--ui-subtle);}
+.ui-workspace .deck {
+  margin-block: 0;
+  min-width: 0;
+}
+.ui-induction .deck-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ui-induction .deck-header {
+  display:grid;
+  grid-template-columns: var(--ui-target) minmax(56px,1fr) var(--ui-target);
+  align-items:center;
+  width:min(200px,100%);
+  gap:8px;
+}
+.ui-induction .deck-header > p {
+  color:var(--ui-subtle);
+  font-variant-numeric:tabular-nums;
+  font-size:.84rem;
+  font-weight:650;
+}
+.ui-induction .deck-header button {
+  width:var(--ui-target);
+  height:var(--ui-target);
+  min-height:var(--ui-target);
+  font-size:1.45rem;
+  border-radius:var(--ui-radius-control);
+  border-color:var(--ui-border);
+  background:var(--ui-surface);
+  color:var(--ui-primary);
+}
+.ui-induction .deck-header button:disabled {color:var(--ui-subtle);}
+.ui-induction .deck .ui-dose-card {margin-top: 8px;}
+.ui-induction .ui-dose-heading {
+  display:flex;
+  gap:12px;
+  justify-content:space-between;
+  align-items:flex-start;
+}
+.ui-induction .ui-dose-title {
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+  min-width:0;
+  flex:1 1 auto;
+}
+.ui-induction .ui-dose-title h2 {
+  font-size:1.33rem;
+  letter-spacing:-.025em;
+  line-height:1.14;
+  min-width:0;
+  overflow-wrap:anywhere;
+}
+.ui-induction .ui-dose-heading .card-title-actions {flex:0 0 auto;}
+.ui-induction .ui-dose-mass {
+  display:flex;
+  gap:6px;
+  align-items:center;
+  flex-wrap:wrap;
+  margin-top:5px;
+}
+.ui-induction .ui-dose-mass .ui-mass-basis {
+  font-size:.78rem;
+  font-weight:600;
+  color:var(--ui-subtle);
+  font-variant-numeric:tabular-nums;
+}
+.ui-induction .ui-dose-inputs {
+  grid-template-columns:minmax(0,1.18fr) minmax(0,1fr);
+  align-items:end;
+  gap:8px;
+  margin-top:18px;
+}
+.ui-induction .ui-dose-inputs .stepper {
+  grid-template-columns:var(--ui-target) minmax(0,1fr) var(--ui-target);
+  gap:4px;
+}
+.ui-induction .ui-dose-inputs :is(input,select,.stepper button) {
+  min-height:var(--ui-target);
+  height:var(--ui-target);
+  border-radius:var(--ui-radius-control);
+}
+.ui-induction .ui-dose-inputs .stepper button {
+  font-size:1.3rem;
+  background:var(--ui-surface-alt);
+  border-color:var(--ui-border);
+  color:var(--ui-primary);
+}
+.ui-induction .ui-dose-inputs .stepper input {font-weight:750;}
+.ui-induction .quick-concentration {margin-top:10px;}
+.ui-induction .ui-dose-result {
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  gap:5px;
+  margin-top:15px;
+  background:var(--ui-surface-alt);
+  border-color:var(--ui-border);
+  padding:15px;
+}
+.ui-induction .ui-dose-result > strong {
+  display:block;
+  margin-top:1px;
+  font-size:clamp(1.4rem,6vw,1.95rem);
+  line-height:1.2;
+  color:var(--ui-ink);
+}
+.ui-induction .ui-dose-result:not(.has-value) > strong {
+  font-size:.93rem;
+  letter-spacing:0;
+  color:var(--ui-subtle);
+  font-weight:600;
+}
+.ui-induction .ui-dose-volume {
+  display:flex;
+  align-items:baseline;
+  flex-wrap:wrap;
+  gap:8px;
+  padding-top:8px;
+  margin-top:4px;
+  border-top:1px solid var(--ui-border);
+}
+.ui-induction .ui-dose-volume-label {font-size:.77rem;color:var(--ui-subtle);}
+.ui-induction .ui-dose-volume-value {font-size:1.18rem;font-weight:750;color:var(--ui-ink);}
+.ui-induction .ui-dose-result small {margin-top:4px;color:var(--ui-subtle);}
+.ui-induction .ui-dose-card > details:not(.mass-disclosure) {
+  border-top:1px solid var(--ui-border);
+  padding-top:3px;
+  margin-top:12px;
+}
+.ui-induction .ui-dose-card > details:not(.mass-disclosure) > summary {
+  font-size:.85rem;
+  font-weight:650;
+  padding:10px 0;
+  min-height:var(--ui-target);
+}
+.ui-induction .ui-dose-card .dose-safety-note {
+  background:var(--ui-warn-bg);
+  border:1px solid var(--ui-warn-border);
+  border-left:3px solid var(--ui-warn);
+  color:var(--ui-warn);
+  padding:10px 12px;
+  line-height:1.45;
+  font-size:.84rem;
+  border-radius:var(--ui-radius-small);
+}
+.ui-induction .deck-actions {margin-top:4px;}
+.ui-induction .deck-actions > button.primary {
+  width:100%;
+  min-height:var(--ui-target);
+  border-radius:var(--ui-radius-control);
+  background:var(--ui-primary);
+  font-size:.98rem;
+}
+.ui-workspace + .patient-reset, .ui-workspace .patient-reset { margin-top:0; }
+@media (max-width:480px) {
+  .ui-workspace .ui-patient-card {padding:12px;}
+  .ui-induction .ui-dose-result {padding:12px;}
+}
+@media (max-width:360px) {
+  .ui-workspace .ui-patient-card {padding:10px;}
+  .ui-workspace .ui-patient-card .patient-anthropometry,
+  .ui-workspace .ui-patient-card .grid.patient-anthropometry {gap:6px;}
+  .ui-workspace .ui-patient-card .patient-anthropometry :is(input,select) {padding-inline:5px;}
+  .ui-workspace .patient-mass-item {padding-inline:2px;}
+  .ui-workspace .patient-mass-value {font-size:.8rem;}
+  .ui-induction .ui-dose-inputs {gap:6px;}
+  .ui-induction .ui-dose-title h2 {font-size:1.2rem;}
+}
