@@ -1,0 +1,144 @@
+/*
+ * UncleSam UI system v1
+ * Shared visual primitives and tokens. Clinical logic lives in JS modules.
+ * Apply .ui-workspace to an adopted screen, .ui-card to cards, .ui-icon-button
+ * to icon controls, .ui-result-panel to calculation outputs.
+ */
+:root {
+  --ui-font: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+  --ui-ink: #19312b;
+  --ui-subtle: #60756c;
+  --ui-border: #d8e4dd;
+  --ui-primary: #126048;
+  --ui-primary-soft: #e9f3ed;
+  --ui-surface: #ffffff;
+  --ui-surface-alt: #f6f9f7;
+  --ui-warn: #87550d;
+  --ui-warn-bg: #fff7e9;
+  --ui-warn-border: #e8d4b4;
+  --ui-error: #9e3829;
+  --ui-radius-card: 16px;
+  --ui-radius-control: 10px;
+  --ui-radius-small: 8px;
+  --ui-shadow: 0 2px 12px rgba(21,53,40,.055);
+  --ui-s1: 4px;
+  --ui-s2: 8px;
+  --ui-s3: 12px;
+  --ui-s4: 16px;
+  --ui-s5: 20px;
+  --ui-s6: 24px;
+  --ui-target: 44px;
+}
+.ui-workspace {
+  font-family: var(--ui-font);
+  max-width: 780px;
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-s3);
+  min-width: 0;
+}
+.ui-workspace .ui-card {
+  background: var(--ui-surface);
+  color: var(--ui-ink);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-card);
+  box-shadow: var(--ui-shadow);
+  padding: var(--ui-s4);
+  min-width: 0;
+}
+.ui-workspace :is(input,select,textarea) {
+  background: #fff;
+  border-color: #bccfc4;
+  border-radius: var(--ui-radius-control);
+  min-width: 0;
+  max-width: 100%;
+  font-size: 16px;
+}
+.ui-workspace :is(input,select,textarea):focus-visible,
+.ui-workspace button:focus-visible,
+.ui-workspace summary:focus-visible {
+  outline: 2px solid var(--ui-primary);
+  outline-offset: 2px;
+}
+.ui-workspace label { color: var(--ui-subtle); font-size: .79rem; font-weight: 600; }
+.ui-workspace .ui-icon-button,
+.ui-workspace .ui-card .mass-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 var(--ui-target);
+  width: var(--ui-target);
+  height: var(--ui-target);
+  min-height: var(--ui-target);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-control);
+  background: var(--ui-surface-alt);
+  color: var(--ui-primary);
+  padding: 0;
+}
+.ui-workspace .ui-card .mass-trigger { width: var(--ui-target); min-width:var(--ui-target); }
+.ui-workspace .ui-icon-button:disabled { color:var(--ui-subtle); background:var(--ui-surface-alt); }
+.ui-workspace .ui-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 25px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--ui-surface-alt);
+  border: 1px solid var(--ui-border);
+  color: var(--ui-subtle);
+  font-size: .75rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.ui-workspace .ui-eyebrow {
+  color: var(--ui-subtle);
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .055em;
+  text-transform: uppercase;
+}
+.ui-workspace .ui-result-panel {
+  background: var(--ui-surface-alt);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-control);
+  padding: var(--ui-s4);
+  color: var(--ui-ink);
+  font-variant-numeric: tabular-nums;
+}
+.ui-workspace .ui-result-panel > strong {
+  color: var(--ui-ink);
+  letter-spacing: -.025em;
+  font-size: clamp(1.25rem, 5vw, 1.65rem);
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+.ui-workspace .ui-result-panel small {
+  font-weight: 400;
+  line-height: 1.45;
+  font-size: .78rem;
+}
+.ui-workspace .dose-safety-note {
+  border-color: var(--ui-warn-border);
+  background: var(--ui-warn-bg);
+  color: var(--ui-warn);
+}
+.ui-workspace .ui-action-primary {
+  min-height: var(--ui-target);
+  border-radius: var(--ui-radius-control);
+  font-size: .98rem;
+  font-weight: 700;
+}
+.ui-workspace .ui-card :is(.mass-widget,.scenario-editor) {
+  background: var(--ui-surface);
+  border-radius: var(--ui-radius-card);
+  border-color: var(--ui-border);
+  box-shadow: 0 12px 30px rgba(21,53,40,.16);
+}
+@media (max-width: 480px) {
+  .ui-workspace { gap: var(--ui-s2); }
+  .ui-workspace .ui-card { padding: var(--ui-s3); }
+  .ui-workspace .ui-result-panel { padding: var(--ui-s3); }
+}
