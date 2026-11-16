@@ -508,3 +508,6 @@ nav { margin-top: 12px; }
     top:calc(9px + 36px + 9px + 1.5 * .88rem + 3px);
   }
 }
+
+/* Ненавязчивое предупреждение для доз, отличающихся от типовой схемы инструкции. */
+.dose-safety-note { margin-top:8px; padding:8px 10px; border:1px solid #e2c9a2; background:#fff8ed; color:#704819; border-radius:9px; font-size:.85rem; line-height:1.45; }
