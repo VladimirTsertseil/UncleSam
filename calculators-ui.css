@@ -1,0 +1,219 @@
+/*
+ * UncleSam UI v2 — clinical calculators screen.
+ * Shared design primitives supplied by design-system.css.
+ */
+.ui-calculators {max-width:780px}
+.ui-calculators .clinical-shell {width:100%;max-width:none;min-width:0;margin:0}
+.ui-calculators .clinical-groups {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:7px;
+  margin:0;
+}
+.ui-calculators .clinical-groups button {
+  min-height:44px;
+  min-width:0;
+  padding:8px;
+  color:var(--ui-subtle);
+  background:var(--ui-surface);
+  border:1px solid var(--ui-border);
+  border-radius:var(--ui-radius-control);
+  font-size:.85rem;
+  font-weight:650;
+}
+.ui-calculators .clinical-groups button[aria-pressed="true"] {
+  color:var(--ui-primary);
+  background:var(--ui-primary-soft);
+  border-color:var(--ui-primary);
+}
+.ui-calculators .clinical-picker {
+  display:block;
+  margin:12px 0 0;
+}
+.ui-calculators .clinical-picker select {
+  margin-top:5px;
+  width:100%;
+  min-height:44px;
+}
+.ui-calculators .ui-clinical-card {
+  margin-top:12px;
+  padding:16px;
+  border-radius:var(--ui-radius-card);
+  border:1px solid var(--ui-border);
+}
+.ui-calculators .clinical-card-heading {align-items:flex-start;gap:8px}
+.ui-calculators .ui-clinical-heading-text {
+  display:flex;
+  min-width:0;
+  flex-direction:column;
+  gap:5px;
+}
+.ui-calculators .ui-clinical-heading-text h2 {
+  font-size:1.3rem;
+  line-height:1.2;
+  letter-spacing:-.02em;
+  overflow-wrap:anywhere;
+}
+.ui-calculators .ui-clinical-heading-text .ui-pill {
+  align-self:flex-start;
+  font-size:.75rem;
+}
+.ui-calculators .clinical-mass-disclosure > summary.mass-trigger {
+  min-width:44px;
+  width:44px;
+  height:44px;
+  min-height:44px;
+  padding:0;
+  border-radius:var(--ui-radius-control);
+  background:var(--ui-surface-alt);
+  border:1px solid var(--ui-border);
+  color:var(--ui-primary);
+}
+.ui-calculators .ui-clinical-card > .subtle {
+  margin-top:9px;
+  font-size:.86rem;
+  line-height:1.45;
+  color:var(--ui-subtle);
+}
+.ui-calculators .clinical-fields {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+  margin-top:14px;
+  align-items:start;
+}
+.ui-calculators .clinical-fields > label {
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  min-width:0;
+  width:100%;
+  gap:0;
+  font-size:.79rem;
+}
+.ui-calculators .clinical-fields :is(input,select) {
+  display:block;
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  height:44px;
+  margin-top:5px;
+  border-radius:var(--ui-radius-control);
+}
+.ui-calculators .clinical-fields small {
+  margin-top:4px;
+  color:var(--ui-subtle);
+  font-size:.74rem;
+  line-height:1.35;
+}
+.ui-calculators .clinical-checks {
+  border:0;
+  margin:15px 0 0;
+  padding:0;
+  min-width:0;
+}
+.ui-calculators .clinical-checks legend {font-size:.83rem;color:var(--ui-subtle)}
+.ui-calculators .clinical-check {
+  display:flex;
+  flex-direction:row;
+  align-items:center;
+  gap:10px;
+  min-height:44px;
+  border-bottom:1px solid var(--ui-border);
+  padding:7px 0;
+  color:var(--ui-ink);
+  font-size:.88rem;
+}
+.ui-calculators .clinical-check input {
+  width:20px;
+  height:20px;
+  min-height:20px;
+  flex:0 0 20px;
+  margin:0;
+  accent-color:var(--ui-primary);
+}
+.ui-calculators .clinical-actions {
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:17px;
+}
+.ui-calculators .clinical-actions button {
+  min-height:44px;
+  border-radius:var(--ui-radius-control);
+}
+.ui-calculators .clinical-actions button.primary {background:var(--ui-primary)}
+.ui-calculators .clinical-output .clinical-result {
+  margin-top:14px;
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+  padding:15px;
+  border-radius:var(--ui-radius-control);
+  border:1px solid var(--ui-border);
+  background:var(--ui-surface-alt);
+  color:var(--ui-ink);
+}
+.ui-calculators .clinical-output .clinical-result h3 {
+  font-size:.71rem;
+  font-weight:750;
+  line-height:1.3;
+  text-transform:uppercase;
+  letter-spacing:.055em;
+  color:var(--ui-subtle);
+}
+.ui-calculators .clinical-output .clinical-result > strong {
+  color:var(--ui-ink);
+  font-size:clamp(1.3rem,4.8vw,1.7rem);
+  font-weight:750;
+  line-height:1.3;
+  overflow-wrap:anywhere;
+  font-variant-numeric:tabular-nums;
+}
+.ui-calculators .clinical-output .clinical-result p {
+  margin:0;
+  font-size:.86rem;
+  line-height:1.45;
+}
+.ui-calculators .clinical-result dl {
+  display:grid;
+  gap:4px;
+  margin:5px 0;
+  padding-top:10px;
+  border-top:1px solid var(--ui-border);
+}
+.ui-calculators .clinical-result dl > div {
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:space-between;
+  gap:4px 10px;
+  padding:4px 0;
+}
+.ui-calculators .clinical-result dt {color:var(--ui-subtle);font-size:.81rem}
+.ui-calculators .clinical-result dd {margin:0;font-size:.82rem;font-weight:700}
+.ui-calculators .clinical-next {
+  border-top:1px solid var(--ui-border);
+  padding-top:9px;
+}
+.ui-calculators .clinical-error {
+  color:var(--ui-error);
+  border:1px solid #e9c8c1;
+  padding:10px;
+  border-radius:var(--ui-radius-small);
+  background:#fff6f4;
+  font-size:.86rem;
+  margin-top:12px;
+}
+.ui-calculators .clinical-sources {border-top:1px solid var(--ui-border);margin-top:16px;padding-top:4px}
+.ui-calculators .clinical-sources summary {min-height:44px;font-size:.84rem}
+.ui-calculators .clinical-help {border-top:1px solid var(--ui-border);margin-top:16px;padding-top:12px}
+.ui-calculators .clinical-help h3 {font-size:.96rem}
+.ui-calculators .clinical-help p {font-size:.85rem}
+@media (max-width:480px) {
+  .ui-calculators .ui-clinical-card {padding:12px}
+  .ui-calculators .clinical-fields {gap:8px}
+}
+@media (max-width:380px) {
+  .ui-calculators .clinical-fields {grid-template-columns:minmax(0,1fr)}
+  .ui-calculators .clinical-groups button {font-size:.79rem}
+}
