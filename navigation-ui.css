@@ -1,0 +1,184 @@
+/*
+ * UncleSam unified navigation v3.
+ * Desktop: all seven destinations inline.
+ * Mobile: three frequent destinations + an accessible "Ещё" menu.
+ */
+.top #nav {
+  display:flex;
+  align-items:stretch;
+  justify-content:flex-start;
+  gap:7px;
+  overflow:visible;
+  margin-top:12px;
+  padding:0;
+}
+.top #nav .nav-main,
+.top #nav .nav-more-container,
+.top #nav .nav-more-list {display:contents;}
+.top #nav button[data-tab] {
+  min-width:0;
+  flex:0 0 auto;
+  min-height:44px;
+  padding:8px 13px;
+  margin:0;
+  font-size:.86rem;
+  white-space:nowrap;
+  border:0;
+  border-radius:10px 10px 0 0;
+  background:transparent;
+  color:#d2e7d9;
+  font-weight:600;
+}
+.top #nav button[data-tab][aria-current="page"] {
+  background:var(--bg);
+  color:var(--ui-ink);
+  font-weight:750;
+}
+.top #nav .nav-more-toggle {display:none;}
+.top #nav .nav-info-button {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 44px;
+  min-width:44px;
+  padding:0;
+}
+.top #nav .nav-info-button span {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:26px;
+  height:26px;
+  border:1.6px solid currentColor;
+  border-radius:50%;
+  font-family:Georgia,serif;
+  font-size:18px;
+  font-weight:700;
+  line-height:1;
+}
+.top #nav .nav-info-text {display:none;}
+.top #nav .nav-tab-short {display:none;}
+.top #nav .nav-tab-long {display:inline;}
+@media (max-width: 700px) {
+  .top {padding-top:12px;}
+  .top .app-title {gap:9px;min-height:38px;}
+  .top .app-title img {width:32px;height:32px;}
+  .top .app-title h1 {font-size:1.35rem;line-height:1.15;letter-spacing:-.035em;}
+  .top #nav {
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 64px;
+    align-items:stretch;
+    gap:5px;
+    width:100%;
+    margin-top:10px;
+    overflow:visible;
+    position:relative;
+  }
+  .top #nav .nav-main {
+    display:grid;
+    grid-template-columns: minmax(0,1fr) minmax(0,1fr) minmax(0,.9fr);
+    gap:4px;
+    min-width:0;
+    align-items:stretch;
+  }
+  .top #nav .nav-main button[data-tab] {
+    min-width:0;
+    max-width:100%;
+    padding:9px 4px;
+    font-size:clamp(.7rem,2.85vw,.84rem);
+    text-align:center;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    justify-content:center;
+  }
+  .top #nav .nav-tab-long {display:none;}
+  .top #nav .nav-tab-short {display:inline;}
+  .top #nav .nav-more-container {
+    display:block;
+    position:relative;
+    min-width:0;
+  }
+  .top #nav .nav-more-toggle {
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+    justify-content:center;
+    align-items:center;
+    min-width:0;
+    width:100%;
+    height:44px;
+    min-height:44px;
+    background:transparent;
+    color:#d2e7d9;
+    border:0;
+    border-radius:10px 10px 0 0;
+    font-size:.79rem;
+    font-weight:650;
+    padding:2px;
+  }
+  .top #nav .nav-more-toggle .nav-more-chevron {line-height:.5;font-size:.75rem;}
+  .top #nav .nav-more-container.is-current > .nav-more-toggle,
+  .top #nav .nav-more-container.is-open > .nav-more-toggle {
+    color:var(--ui-ink);
+    background:var(--bg);
+  }
+  .top #nav .nav-more-list {
+    display:none;
+    position:absolute;
+    top:calc(100% + 7px);
+    right:0;
+    width:min(274px,calc(100vw - 24px));
+    max-height:min(70dvh,390px);
+    overflow-y:auto;
+    padding:6px;
+    z-index:100;
+    background:var(--ui-surface);
+    border:1px solid var(--ui-border);
+    border-radius:12px;
+    box-shadow:0 15px 40px rgba(11,43,31,.22);
+  }
+  .top #nav .nav-more-container.is-open .nav-more-list {
+    display:grid;
+    gap:3px;
+  }
+  .top #nav .nav-more-list button[data-tab] {
+    display:flex;
+    flex:0 0 auto;
+    gap:10px;
+    width:100%;
+    min-height:46px;
+    justify-content:flex-start;
+    align-items:center;
+    text-align:left;
+    padding:10px 12px;
+    border:1px solid transparent;
+    border-radius:9px;
+    font-size:.9rem;
+    font-weight:650;
+    background:transparent;
+    color:var(--ui-ink);
+  }
+  .top #nav .nav-more-list button[data-tab][aria-current="page"] {
+    background:var(--ui-primary-soft);
+    border-color:var(--ui-border);
+    color:var(--ui-primary);
+  }
+  .top #nav .nav-more-list .nav-info-button {
+    justify-content:flex-start;
+    width:100%;
+    min-width:0;
+  }
+  .top #nav .nav-more-list .nav-info-button span {
+    width:23px;
+    height:23px;
+    flex:0 0 23px;
+    font-size:16px;
+  }
+  .top #nav .nav-info-text {display:inline;font-size:.9rem;}
+}
+@media (max-width:340px) {
+  .top .app-title h1 {font-size:1.2rem;}
+  .top #nav {grid-template-columns:minmax(0,1fr) 57px;gap:3px;}
+  .top #nav .nav-main {gap:2px;}
+  .top #nav .nav-main button[data-tab] {font-size:.7rem;letter-spacing:-.02em;padding-inline:1px;}
+}
