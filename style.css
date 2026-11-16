@@ -371,3 +371,101 @@ nav { margin-top: 12px; }
 .info-limits p { font-size:.91rem; }
 .info-extra ul { padding-left:20px; margin:6px 0 2px; }
 .info-extra li { margin:7px 0; overflow-wrap:anywhere; }
+
+/* Компактный профиль пациента: одна строка антропометрии и 4 расчётные массы. */
+.shared-patient.patient-panel {
+  position:relative;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:12px;
+  box-shadow:0 2px 8px #142c2608;
+  margin-bottom:12px;
+}
+.shared-patient .patient-scenario-row { padding-right:52px; }
+.shared-patient .patient-scenario-row select { height:44px; margin-top:3px; }
+.shared-patient .scenario-tools > summary {
+  top:calc(12px + 1.5 * .88rem + 3px);
+  right:12px;
+}
+.shared-patient .patient-anthropometry,
+.shared-patient .grid.patient-anthropometry {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,.85fr);
+  align-items:end;
+  gap:7px;
+  margin-top:10px;
+}
+.shared-patient .patient-anthropometry > label,
+.shared-patient .patient-anthropometry > label:last-child {
+  grid-column:auto;
+  min-width:0;
+  font-size:.79rem;
+  line-height:1.2;
+  white-space:nowrap;
+}
+.shared-patient .patient-anthropometry :is(input,select) {
+  width:100%;
+  min-width:0;
+  height:44px;
+  min-height:44px;
+  margin-top:5px;
+  padding:7px 8px;
+  font-size:16px; /* Не увеличивать страницу при фокусе ввода на iOS */
+  font-weight:600;
+  border-radius:9px;
+}
+.shared-patient .patient-anthropometry select { padding-left:6px; padding-right:3px; }
+.shared-patient .patient-mass-summary {
+  display:block;
+  font-size:.8rem;
+  margin-top:10px;
+  line-height:1.25;
+}
+.patient-mass-strip {
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:5px;
+}
+.patient-mass-item {
+  min-width:0;
+  background:var(--bg);
+  border:1px solid var(--border);
+  border-radius:9px;
+  padding:6px 4px 7px;
+  text-align:center;
+}
+.patient-mass-name {
+  display:block;
+  font-size:.68rem;
+  line-height:1.2;
+  color:var(--muted);
+  white-space:nowrap;
+}
+.patient-mass-value {
+  display:block;
+  margin-top:4px;
+  color:var(--ink);
+  font-size:.86rem;
+  line-height:1.25;
+  font-weight:700;
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+}
+.patient-bmi {
+  color:var(--muted);
+  font-size:.75rem;
+  margin-top:6px;
+  text-align:right;
+}
+.patient-bmi b { color:var(--ink); font-weight:650; }
+@media (max-width:360px) {
+  .shared-patient.patient-panel { padding:9px; }
+  .shared-patient .scenario-tools > summary { top:calc(9px + 1.5 * .88rem + 3px); right:9px; }
+  .shared-patient .patient-anthropometry,
+  .shared-patient .grid.patient-anthropometry { gap:5px; }
+  .shared-patient .patient-anthropometry > label { font-size:.72rem; }
+  .shared-patient .patient-anthropometry :is(input,select) { padding-inline:5px; }
+  .patient-mass-item { padding-inline:2px; }
+  .patient-mass-value { font-size:.78rem; }
+}
