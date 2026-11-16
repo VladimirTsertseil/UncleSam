@@ -13,13 +13,40 @@
   const result = (value, interpretation, action, metrics = []) => ({ value, interpretation, action, metrics });
   const source = (label, url) => ({ label, url });
   const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+  const body = AnesthesiaBodyMass;
+  const profileCards = new Set(['crcl','stop-bang','blood-volume','blood-loss','sodium']);
+  const massCards = new Set(['crcl','blood-volume','blood-loss','sodium']);
+  const needsMass = (card, raw) => massCards.has(card.id) &&
+    !(card.id === 'blood-loss' && raw.volumeMode === 'known') &&
+    !(card.id === 'sodium' && raw.mode === 'trend');
 
   function visibleFields(card, raw) {
-    return typeof card.fields === 'function' ? card.fields(raw) : card.fields;
+    const fields = typeof card.fields === 'function' ? card.fields(raw) : card.fields;
+    if (!profileCards.has(card.id)) return fields;
+    return fields.filter(field => !['sex','height','weight'].includes(field.key) &&
+      !(card.id === 'stop-bang' && field.key === 'bmi'));
   }
 
-  function calculate(card, raw) {
+  function calculate(card, raw, profile = null) {
     const values = {};
+    if (profileCards.has(card.id)) {
+      if (card.id === 'stop-bang' || needsMass(card, raw)) {
+        if (!profile?.actual) return {error:'Укажите фактическую массу в профиле пациента.'};
+        if (!profile.height || !profile.sex) return {error:'Укажите рост и пол в профиле пациента для расчётных показателей массы.'};
+      }
+      if (profile?.sex) values.sex = profile.sex;
+      if (profile?.height) values.height = profile.height;
+      if (profile?.bmi) values.bmi = profile.bmi;
+      if (needsMass(card, raw)) {
+        const recommended = body.forCalculator(card.id, profile);
+        values.weight = body.choose(profile, raw.massMode || 'recommended', recommended.mode);
+        if (values.weight === null) return {error:'Невозможно рассчитать выбранную массу. Проверьте рост, пол и фактическую массу пациента.'};
+        // Для описания результата по Кокрофту–Голту доступны и альтернативные массы.
+        values.actualWeight = profile.actual;
+        values.idealWeight = profile.ideal;
+        values.adjustedWeight = profile.adjusted;
+      }
+    }
     for (const field of visibleFields(card, raw)) {
       const entered = raw[field.key] ?? field.initial ?? '';
       if (field.kind === 'check') {
@@ -152,13 +179,28 @@
     </section>`;
   }
 
-  function create(root, groups) {
+  function create(root, groups, getPatient = () => null) {
     let groupIndex = 0;
     const selected = groups.map(group => group.cards[0].id);
     const saved = new Map();
     const reports = new Map();
     const active = () => groups[groupIndex].cards.find(card => card.id === selected[groupIndex]);
     const getData = card => saved.get(card.id) ?? {};
+
+    function massMarkup(card,raw) {
+      if (!needsMass(card,raw)) return '';
+      const p = getPatient();
+      const recommendation = body.forCalculator(card.id,p);
+      const mode = raw.massMode || 'recommended';
+      const selected = body.choose(p,mode,recommendation.mode);
+      const opts = option('recommended','Рекомендуемая: ' + body.labels[recommendation.mode],mode) +
+        body.modes.map(([id,label]) => option(id,label + ' · ' + (p?.[id] !== null && p?.[id] !== undefined ? body.fmt(p[id])+' кг' : '—'),mode)).join('');
+      return `<div class="mass-widget clinical-mass-widget">
+        <label>Масса для расчёта<select data-clinical-mass-mode>${opts}</select></label>
+        <p class="mass-current">Выбрано: <b>${escape(body.labels[mode==='recommended' ? recommendation.mode : mode])} · ${selected === null ? '—' : body.fmt(selected) + ' кг'}</b></p>
+        <p class="subtle mass-advice">${escape(recommendation.note)}</p>
+      </div>`;
+    }
 
     function layout() {
       const card = active();
@@ -170,6 +212,7 @@
         <form class="panel clinical-card" data-clinical-form novalidate>
           <h2 tabindex="-1" data-clinical-title>${escape(card.title)}</h2><p class="subtle">${escape(card.description)}</p>
           ${renderFields(visibleFields(card, raw), raw)}
+          ${massMarkup(card,raw)}
           <div class="actions space"><button class="primary" type="submit">Рассчитать</button><button type="button" data-clinical-clear>Очистить</button></div>
           <section class="clinical-output" aria-live="polite" aria-atomic="true">${report ? showResult(report) : ''}</section>
           <details class="clinical-sources"><summary>Источники и версия</summary><ul>${card.sources.map(item =>
@@ -223,6 +266,12 @@
         // На iOS фокус нового select повторно открывал системный список выбора.
         field.blur();
         requestAnimationFrame(() => refresh('[data-clinical-title]'));
+      } else if (field.matches('[data-clinical-mass-mode]')) {
+        const card = active();
+        saved.set(card.id, {...getData(card),massMode:field.value});
+        reports.delete(card.id);
+        field.blur();
+        requestAnimationFrame(() => refresh());
       } else if (field.matches('select[data-clinical-field]')) {
         update(field, typeof active().fields === 'function');
       }
@@ -232,7 +281,7 @@
       if (!form.matches('[data-clinical-form]')) return;
       event.preventDefault();
       const card = active();
-      const report = calculate(card, getData(card));
+      const report = calculate(card, getData(card), getPatient());
       const output = form.querySelector('.clinical-output');
       form.querySelector('[aria-invalid]')?.removeAttribute('aria-invalid');
       output.innerHTML = showResult(report);
@@ -249,6 +298,7 @@
     return {
       markup: () => `<section class="clinical-shell" aria-label="Калькуляторы" data-clinical-root>${layout()}</section>`,
       hasData: () => reports.size > 0 || [...saved.values()].some(values => Object.values(values).some(Boolean)),
+      patientChanged() { reports.clear(); refresh(); },
       reset() { saved.clear(); reports.clear(); }
     };
   }
