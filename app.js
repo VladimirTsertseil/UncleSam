@@ -101,12 +101,18 @@
   const massText = amount => amount === null || !Number.isFinite(amount) ? '—' : body.fmt(amount) + ' кг';
   function massSummary() {
     const p = patientProfile();
-    return `<div class="patient-mass-summary" aria-live="polite">
-      <span>ФМТ: <b>${massText(p.actual)}</b></span>
-      <span>ИдМТ: <b>${massText(p.ideal)}</b></span>
-      <span>СкМТ: <b>${massText(p.adjusted)}</b></span>
-      <span>ТМТ: <b>${massText(p.lean)}</b></span>
-      ${p.bmi !== null ? `<span>Индекс массы тела: <b>${body.fmt(p.bmi)} кг/м²</b></span>` : ''}
+    const massItem = (short, full, value) => `<div class="patient-mass-item" title="${esc(full)}">
+      <span class="patient-mass-name">${esc(short)}</span>
+      <strong class="patient-mass-value">${massText(value)}</strong>
+    </div>`;
+    return `<div class="patient-mass-summary" aria-live="polite" aria-label="Расчётные массы пациента">
+      <div class="patient-mass-strip">
+        ${massItem('ФМТ', 'Фактическая масса тела', p.actual)}
+        ${massItem('ИдМТ', 'Идеальная масса тела', p.ideal)}
+        ${massItem('СкМТ', 'Скорректированная масса тела', p.adjusted)}
+        ${massItem('ТМТ', 'Тощая масса тела', p.lean)}
+      </div>
+      ${p.bmi !== null ? `<div class="patient-bmi">ИМТ <b>${body.fmt(p.bmi)} кг/м²</b></div>` : ''}
     </div>`;
   }
   let selectedMethod = 'gas';
@@ -198,12 +204,12 @@
     const scenarioOptions = option('', 'Новый сценарий', draft.id) + database.scenarios
       .map(scenario => option(scenario.id, scenario.name, draft.id)).join('');
     return `<section class="patient-panel shared-patient" aria-label="Текущий пациент">
-      ${withScenario ? `<div class="space">${select('Сценарий','scenario',scenarioOptions,'global')}</div>` : ''}
+      ${withScenario ? `<div class="patient-scenario-row">${select('Сценарий','scenario',scenarioOptions,'global')}</div>` : ''}
       <div class="grid patient-anthropometry">
-        ${input('Фактическая масса, кг','patientWeight',patientWeight,numeric,'global')}
+        ${input('Вес, кг','patientWeight',patientWeight,numeric,'global')}
         ${input('Рост, см','patientHeight',patientHeight,numeric,'global')}
-        ${select('Пол для формул','patientSex',
-          option('', 'Выбрать', patientSex) + option('male','Мужской',patientSex) + option('female','Женский',patientSex),'global')}
+        ${select('Пол','patientSex',
+          option('', '—', patientSex) + option('male','Муж.',patientSex) + option('female','Жен.',patientSex),'global')}
       </div>
       <div data-patient-mass-summary>${massSummary()}</div>
       ${withScenario ? renderScenarioTools() : ''}
