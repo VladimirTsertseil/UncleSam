@@ -97,6 +97,7 @@
   let patientWeight = '';
   let patientHeight = '';
   let patientSex = '';
+  let patientCollapsed = false;
   const patientProfile = () => body.calculate({weight:patientWeight,height:patientHeight,sex:patientSex});
   const massText = amount => amount === null || !Number.isFinite(amount) ? '—' : body.fmt(amount) + ' кг';
   function massSummary() {
@@ -203,16 +204,28 @@
   function patientPanel(withScenario = true) {
     const scenarioOptions = option('', 'Новый сценарий', draft.id) + database.scenarios
       .map(scenario => option(scenario.id, scenario.name, draft.id)).join('');
-    return `<section class="patient-panel shared-patient" aria-label="Текущий пациент">
-      ${withScenario ? `<div class="patient-scenario-row">${select('Сценарий','scenario',scenarioOptions,'global')}</div>` : ''}
-      <div class="grid patient-anthropometry">
-        ${input('Вес, кг','patientWeight',patientWeight,numeric,'global')}
-        ${input('Рост, см','patientHeight',patientHeight,numeric,'global')}
-        ${select('Пол','patientSex',
-          option('', '—', patientSex) + option('male','Муж.',patientSex) + option('female','Жен.',patientSex),'global')}
+    const summary = [
+      patientWeight ? patientWeight.replace(',', '.') + ' кг' : '',
+      patientHeight ? patientHeight.replace(',', '.') + ' см' : '',
+      patientSex === 'male' ? 'Муж.' : patientSex === 'female' ? 'Жен.' : ''
+    ].filter(Boolean).join(' · ');
+    return `<section class="patient-panel shared-patient${patientCollapsed ? ' is-collapsed' : ''}" aria-label="Текущий пациент">
+      <div class="patient-panel-heading">
+        <strong>${patientCollapsed ? 'Пациент' : 'Данные пациента'}</strong>
+        ${patientCollapsed && summary ? `<span class="patient-panel-preview">${esc(summary)}</span>` : ''}
+        ${button(patientCollapsed ? '+' : '−','toggle-patient','',`class="patient-collapse" aria-expanded="${!patientCollapsed}" aria-label="${patientCollapsed ? 'Развернуть данные пациента' : 'Свернуть данные пациента'}" title="${patientCollapsed ? 'Развернуть' : 'Свернуть'}"`)}
       </div>
-      <div data-patient-mass-summary>${massSummary()}</div>
-      ${withScenario ? renderScenarioTools() : ''}
+      ${patientCollapsed ? '' : `
+        ${withScenario ? `<div class="patient-scenario-row">${select('Сценарий','scenario',scenarioOptions,'global')}</div>` : ''}
+        <div class="grid patient-anthropometry">
+          ${input('Вес, кг','patientWeight',patientWeight,numeric,'global')}
+          ${input('Рост, см','patientHeight',patientHeight,numeric,'global')}
+          ${select('Пол','patientSex',
+            option('', '—', patientSex) + option('male','Муж.',patientSex) + option('female','Жен.',patientSex),'global')}
+        </div>
+        <div data-patient-mass-summary>${massSummary()}</div>
+        ${withScenario ? renderScenarioTools() : ''}
+      `}
     </section>`;
   }
   function renderPatientReset() {
@@ -517,7 +530,7 @@
       }
     }
     const patient = main.querySelector('[data-global="patientWeight"]');
-    patient.setAttribute('aria-invalid', String(Boolean(patientWeight.trim() && !number(patientWeight))));
+    patient?.setAttribute('aria-invalid', String(Boolean(patientWeight.trim() && !number(patientWeight))));
   }
   function doseStep(row) {
     if (row.reverse) return 0.1;
@@ -941,6 +954,10 @@
     const container = buttonEl.closest('[data-stage]');
     const row = rowFrom(buttonEl);
     switch (action) {
+      case 'toggle-patient':
+        patientCollapsed = !patientCollapsed;
+        render(true);
+        break;
       case 'drug-section':
         if (tab !== 'drugs' || value === drugSection || !['preop', 'catalog'].includes(value)) break;
         drugSection = value;
@@ -1012,6 +1029,7 @@
         patientWeight = '';
         patientHeight = '';
         patientSex = '';
+        patientCollapsed = false;
         inhalation.reset();
         epidural.reset();
         nerveBlock.reset();
