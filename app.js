@@ -658,9 +658,9 @@
             return;
           }
         }
+        // Удаляем индивидуальную массу пациента, но сохраняем ручной режим.
+        // После открытия шаблона массу потребуется ввести заново.
         row.weight = '';
-        // Не переносим в шаблон персональную ручную массу без её значения.
-        if (row.weightMode === 'manual') row.weightMode = 'recommended';
       }
     }
     const next = clone(database);
@@ -1074,7 +1074,7 @@
       case 'save-as':
         promptDialog('Сохранить как сценарий',
           `<label class="space">Название<input id="copy-name" value="${esc(draft.name ? draft.name + ' — копия' : '')}" maxlength="120" autofocus></label>
-           <p class="subtle space">Масса пациента при сохранении очищается; ручной выбор массы сбрасывается на рекомендованный, чтобы шаблон не использовал неизвестный вес.</p>`,
+           <p class="subtle space">Масса пациента при сохранении очищается. Если выбран ручной режим расчёта, при следующем открытии потребуется снова ввести массу; автоматически она не подставляется.</p>`,
           button('Сохранить','confirm-copy','','class="primary"'));
         break;
       case 'confirm-copy': savePlan(true, dialog.querySelector('#copy-name').value); break;
