@@ -154,6 +154,8 @@
 }
 .ui-drugs .ui-drug-list-heading h2 {font-size:1.25rem;letter-spacing:-.02em;}
 .ui-drugs .ui-drug-list-heading .primary {min-height:44px;}
+.ui-drugs .ui-drug-list-heading {justify-content:flex-end; margin:0;}
+
 .ui-drugs .ui-drug-list-row h3 {font-size:1.04rem;letter-spacing:-.01em;}
 .ui-drugs .ui-drug-list-row > .bar {gap:10px;}
 .ui-drugs .ui-drug-list-row .actions {gap:6px;}
