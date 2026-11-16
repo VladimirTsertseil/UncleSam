@@ -168,6 +168,7 @@
     else if (tab === 'methods') main.innerHTML = renderMethods() + renderPatientReset();
     else if (tab === 'calculators') main.innerHTML = patientPanel(false) + calculators.markup() + renderPatientReset();
     else if (tab === 'templates') main.innerHTML = templates.markup();
+    else if (tab === 'info') main.innerHTML = AnesthesiaAbout.markup();
     else main.innerHTML = renderDrugSections();
     if (tab === 'drugs' && drugSection === 'preop') preop.mount();
     inhalation.refresh(main);
