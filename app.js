@@ -174,7 +174,8 @@
     if (working) main.innerHTML = `<div class="ui-workspace ${tab === 'calc' ? 'ui-induction' : 'ui-infusion'}">`
       + patientPanel() + renderCalc() + renderPatientReset() + '</div>';
     else if (tab === 'methods') main.innerHTML = renderMethods() + renderPatientReset();
-    else if (tab === 'calculators') main.innerHTML = patientPanel(false) + calculators.markup() + renderPatientReset();
+    else if (tab === 'calculators') main.innerHTML = '<div class="ui-workspace ui-calculators">'
+      + patientPanel(false) + calculators.markup() + renderPatientReset() + '</div>';
     else if (tab === 'templates') main.innerHTML = templates.markup();
     else if (tab === 'info') main.innerHTML = AnesthesiaAbout.markup();
     else main.innerHTML = renderDrugSections();
@@ -423,16 +424,15 @@
     const concentrationName = row.preparation === 'mix' ? 'Единица количества' : 'Единица концентрации';
     const arrows = `<button type="button" data-action="up" aria-label="Выше" ${index === 0 ? 'disabled' : ''}>↑</button>
       <button type="button" data-action="down" aria-label="Ниже" ${index === draft[stage].length-1 ? 'disabled' : ''}>↓</button>`;
-    return `<article class="row${infusion ? ' infusion-card' : ' ui-card ui-dose-card'}" data-stage="${stage}" data-index="${index}" aria-label="${esc(drug?.name || row.label || 'Строка расчёта')}">
-      <div class="card-title${infusion ? '' : ' ui-dose-heading'}">
-        ${infusion ? `<h2>${esc(drug?.name || row.label || 'Выбор препарата')}</h2>`
-          : `<div class="ui-dose-title">
-            <span class="ui-eyebrow">Индукция · внутривенно</span>
-            <h2>${esc(drug?.name || row.label || 'Выбор препарата')}</h2>
-            ${weightBased ? `<div class="ui-dose-mass">
-              <span class="ui-pill ui-mass-basis" data-active-mass>${esc(massReadoutText(row,stage))}</span>
-            </div>` : ''}
-          </div>`}
+    return `<article class="row${stage === 'maintenance' ? ' infusion-card ui-card ui-infusion-card' : ' ui-card ui-dose-card'}" data-stage="${stage}" data-index="${index}" aria-label="${esc(drug?.name || row.label || 'Строка расчёта')}">
+      <div class="card-title${stage === 'maintenance' ? ' ui-infusion-heading' : ' ui-dose-heading'}">
+        <div class="ui-dose-title">
+          <span class="ui-eyebrow">${stage === 'induction' ? 'Индукция · внутривенно' : infusion ? 'Инфузия · внутривенно' : 'Поддержание · болюс'}</span>
+          <h2>${esc(drug?.name || row.label || 'Выбор препарата')}</h2>
+          ${weightBased ? `<div class="ui-dose-mass">
+            <span class="ui-pill ui-mass-basis" data-active-mass>${esc(massReadoutText(row,stage))}</span>
+          </div>` : ''}
+        </div>
         <div class="card-title-actions">
           ${infusion ? button('⇄','flip-infusion','',row.reverse
             ? 'class="infusion-flip" aria-label="Ввод дозы" title="Ввод дозы"'
@@ -441,7 +441,7 @@
         </div>
       </div>
       ${!drug && !row.label ? `<div class="space">${drugPicker}</div>` : ''}
-      <div class="dose-line space${infusion ? '' : ' ui-dose-inputs'}">
+      <div class="dose-line space ui-dose-inputs">
         <div>
           <label for="card-dose">${doseLabel}</label>
           <div class="stepper">
@@ -467,7 +467,16 @@
       </div>` : quickConcentration ? `<div class="quick-concentration space">${quickConcentration}</div>` : ''}
       ${mixtures.length ? `<div class="quick-concentration space">${select('Сохранённое разведение','mixture',option('', 'Выбрать', '') +
         mixtures.map((m,i) => option(String(i), m.quantity + ' ' + m.unit + ' / ' + m.volume + ' мл', '')).join(''))}</div>` : ''}
-      ${infusion ? `<div class="result"><strong data-answer></strong><small data-math hidden></small></div>`
+      ${stage === 'maintenance'
+        ? `<div class="result ui-result-panel ui-infusion-result" aria-live="polite">
+          <span class="ui-eyebrow" data-infusion-caption>Расчётная доза</span>
+          <strong data-answer></strong>
+          <div class="ui-infusion-secondary" data-infusion-secondary hidden>
+            <span class="ui-infusion-secondary-label" data-infusion-secondary-label></span>
+            <span class="ui-infusion-secondary-value" data-infusion-secondary-value></span>
+          </div>
+          <small data-math hidden></small>
+        </div>`
         : `<div class="result ui-result-panel ui-dose-result" aria-live="polite">
           <span class="ui-eyebrow">Расчётная доза</span>
           <strong data-answer></strong>
@@ -563,9 +572,38 @@
       const current = number(row.value);
       const step = doseStep(row);
       const answer = article.querySelector('[data-answer]');
+      const unit = units[row.unit];
+      const hasVolume = Boolean(result.ready && result.volume);
+      const forwardRate = tab === 'pump' && unit.time && !row.reverse;
       answer.textContent = tab === 'calc' && result.ready && result.primary
-        ? result.primary : result.answer;
+        ? result.primary
+        : forwardRate && hasVolume ? result.volume
+        : tab === 'pump' && result.ready && !row.reverse && result.primary ? result.primary
+        : result.answer;
       answer.parentElement.classList.toggle('has-value', Boolean(result.ready));
+      const infusionCaption = article.querySelector('[data-infusion-caption]');
+      if (infusionCaption) {
+        infusionCaption.textContent = forwardRate && hasVolume ? 'Скорость инфузомата'
+          : tab === 'pump' && unit.time && !row.reverse ? 'Доза действующего вещества' : 'Расчётная доза';
+        const sub = article.querySelector('[data-infusion-secondary]');
+        let secondaryLabel = '';
+        let secondaryValue = '';
+        if (result.ready && row.reverse && unit.time && number(row.value)) {
+          secondaryLabel = 'Скорость насоса';
+          secondaryValue = fmt(number(row.value)) + ' мл/ч';
+        } else if (forwardRate && hasVolume) {
+          secondaryLabel = 'Доза действующего вещества';
+          secondaryValue = result.primary;
+        } else if (tab === 'pump' && !unit.time && hasVolume) {
+          secondaryLabel = 'Объём раствора';
+          secondaryValue = result.volume;
+        }
+        sub.hidden = !secondaryLabel;
+        if (secondaryLabel) {
+          article.querySelector('[data-infusion-secondary-label]').textContent = secondaryLabel;
+          article.querySelector('[data-infusion-secondary-value]').textContent = secondaryValue;
+        }
+      }
       const volumeRow = article.querySelector('[data-dose-volume-row]');
       if (volumeRow) {
         volumeRow.hidden = !(result.ready && result.volume);
