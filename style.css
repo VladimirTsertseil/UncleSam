@@ -299,3 +299,20 @@ nav { margin-top: 12px; }
 .template-consent-subnav button { min-width: 0; }
 .template-consent-subnav button[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); background: var(--accent-pale); }
 .template-consent-notice { font-size: .82rem; line-height: 1.45; margin-bottom: 12px; }
+
+/* Общий профиль пациента: компактный вывод ФМТ, ИдМТ, СкМТ и ТМТ. */
+.patient-anthropometry { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 9px; margin-top: 8px; }
+.patient-mass-summary { display:flex; flex-wrap:wrap; gap:5px 13px; margin-top:9px; font-size:.77rem; color:var(--muted); line-height:1.45; }
+.patient-mass-summary span { white-space:nowrap; }
+.patient-mass-summary b { font-weight:650; color:var(--text); }
+.patient-mass-summary small { display:block; flex-basis:100%; font-size:.72rem; line-height:1.45; }
+.mass-widget { border:1px solid var(--border); background:var(--surface); border-radius:12px; padding:10px 12px; }
+.mass-widget > label { display:block; }
+.mass-widget select { display:block; width:100%; max-width:100%; }
+.mass-current { font-size:.88rem; margin-top:7px; }
+.mass-advice { font-size:.78rem; line-height:1.5; margin-top:6px; }
+.clinical-mass-widget { margin-top:12px; }
+@media (max-width:760px) {
+  .patient-anthropometry { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .patient-anthropometry > label:last-child { grid-column:1 / -1; }
+}
