@@ -236,8 +236,13 @@
       for (const fieldKey of cleared) delete next[fieldKey];
       saved.set(card.id, next);
       reports.delete(card.id);
-      if (rebuild || cleared.length) refresh(`[data-clinical-field="${key}"]`);
-      else {
+      if (rebuild || cleared.length) {
+        if (field.tagName === 'SELECT') {
+          // Не фокусируем новый select: iOS может повторно открыть системный список.
+          field.blur();
+          requestAnimationFrame(() => refresh());
+        } else refresh(`[data-clinical-field="${key}"]`);
+      } else {
         const form = field.closest('form');
         form.querySelector('.clinical-output').textContent = '';
         form.querySelector('[aria-invalid]')?.removeAttribute('aria-invalid');
