@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="./infusion-ui.css?v=1">
   <link rel="stylesheet" href="./calculators-ui.css?v=1">
   <link rel="stylesheet" href="./reference-ui.css?v=3">
+  <link rel="stylesheet" href="./special-reference.css?v=20261118-1">
   <link rel="stylesheet" href="./navigation-ui.css?v=1">
   <script defer src="./calc.js"></script>
   <script defer src="./body-mass.js?v=induction-audit-1"></script>
@@ -31,7 +32,9 @@
   <script defer src="./consents-data.js?v=1"></script>
   <script defer src="./templates.js?v=clean-copy-1"></script>
   <script defer src="./about.js?v=clean-copy-1"></script>
-  <script defer src="./app.js?v=clean-copy-1"></script>
+  <script defer src="./special-reference-data.js?v=20261118-1"></script>
+  <script defer src="./special-reference.js?v=20261118-1"></script>
+  <script defer src="./app.js?v=special-reference-20261118-1"></script>
 </head>
 <body>
   <header class="top">
@@ -51,6 +54,7 @@
           <div class="nav-more-list" id="nav-more-list">
             <button data-tab="methods" type="button">Методы</button>
             <button data-tab="drugs" type="button">Препараты</button>
+            <button data-tab="reference" type="button">Справка</button>
             <button data-tab="templates" type="button">Протоколы</button>
             <button data-tab="info" class="nav-info-button" type="button" aria-label="О приложении" title="О приложении"><span aria-hidden="true">i</span><b class="nav-info-text">О приложении</b></button>
           </div>
@@ -63,3 +67,4 @@
   <div id="status" class="toast" role="status" hidden></div>
 </body>
 </html>
+

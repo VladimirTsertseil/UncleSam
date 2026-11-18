@@ -17,6 +17,7 @@
     { label: 'Критические состояния', cards: AnesthesiaCriticalCalculators }
   ], () => patientProfile());
   const templates = AnesthesiaTemplates.create(main);
+  const specialReference = AnesthesiaSpecialReference.create(main);
   const uid = () => globalThis.crypto?.randomUUID?.() || Date.now().toString(36) + Math.random().toString(36).slice(2);
   const clone = value => structuredClone(value);
   const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({
@@ -171,7 +172,7 @@
       else el.removeAttribute('aria-current');
     }
     nav.querySelector('[data-nav-more]')?.classList.toggle('is-current',
-      ['methods','drugs','templates','info'].includes(tab));
+      ['methods','drugs','reference','templates','info'].includes(tab));
     const working = tab === 'calc' || tab === 'pump';
     if (working) main.innerHTML = `<div class="ui-workspace ${tab === 'calc' ? 'ui-induction' : 'ui-infusion'}">`
       + patientPanel() + renderCalc() + renderPatientReset() + '</div>';
@@ -180,6 +181,10 @@
     else if (tab === 'calculators') main.innerHTML = '<div class="ui-workspace ui-calculators">'
       + patientPanel(false) + calculators.markup() + renderPatientReset() + '</div>';
     else if (tab === 'templates') main.innerHTML = '<div class="ui-workspace ui-templates">' + templates.markup() + '</div>';
+    else if (tab === 'reference') {
+      main.innerHTML = '<div class="ui-workspace ui-reference">' + specialReference.markup() + '</div>';
+      specialReference.refresh();
+    }
     else if (tab === 'info') main.innerHTML = '<div class="ui-workspace ui-info">' + AnesthesiaAbout.markup() + '</div>';
     else main.innerHTML = '<div class="ui-workspace ui-drugs">' + renderDrugSections() + '</div>';
     if (tab === 'drugs' && drugSection === 'preop') preop.mount();
@@ -899,7 +904,7 @@
       else if (tab === 'methods' && selectedMethod === 'block') nerveBlock.refresh(main, patientWeight);
       return;
     }
-    if (tab === 'calculators' || tab === 'templates') return;
+    if (tab === 'calculators' || tab === 'templates' || tab === 'reference') return;
     if (el.id === 'preop-query') {
       preop.input(el.value);
       return;
@@ -936,7 +941,7 @@
       render(true);
       return;
     }
-    if (tab === 'calculators' || tab === 'templates') return;
+    if (tab === 'calculators' || tab === 'templates' || tab === 'reference') return;
     if (tab === 'methods') {
       if (el.dataset.methods === 'method') {
         selectedMethod = el.value;
@@ -1318,3 +1323,4 @@
   render();
   if (startupMessage) notify(startupMessage, true);
 })();
+
